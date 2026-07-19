@@ -42,6 +42,10 @@ DEFAULTS = {
     # Rnai.io backend (สำหรับ tool เรียก skills)
     "RNAI_IO_BASE": "https://rnai-io.vercel.app",
     "RNAI_IO_API_KEY": "",
+    # Workspace folder — โฟลเดอร์ทำงานของ agent (เหมือนเปิดโปรเจกต์ใน IDE)
+    "WORKSPACE_DIR": str(Path.home() / "RnaiWorkspace"),
+    # รายการโปรเจกต์ที่เคยเปิด (path) — แสดงใน sidebar
+    "PROJECTS": [str(Path.home() / "RnaiWorkspace")],
     # Agent
     "AGENT_PLANNER": "groq",      # groq | gemini  (สมองวางแผน/เรียก tools)
     "AGENT_VOICE": "rnai",        # rnai | none    (เสียงตอบสรุปภาษาไทย)

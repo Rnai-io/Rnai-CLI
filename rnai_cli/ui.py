@@ -58,6 +58,22 @@ nav .grow { flex:1; }
 #newBtn:hover { background:var(--hover); border-color:#d4d4d4; }
 #side .label { padding:4px 20px 8px; font-size:11.5px; font-weight:600; color:var(--faint);
                text-transform:uppercase; letter-spacing:.06em; }
+.projlabel { display:flex; align-items:center; justify-content:space-between; padding-right:12px; }
+#newProj { border:0; background:transparent; color:var(--faint); font-size:16px; line-height:1;
+           width:22px; height:22px; border-radius:6px; cursor:pointer; }
+#newProj:hover { background:var(--soft); color:var(--ink); }
+#projects { padding:0 8px 6px; }
+.proj { display:flex; align-items:center; gap:8px; padding:8px 10px; border-radius:8px; cursor:pointer;
+        font-size:13px; color:#404040; }
+.proj:hover { background:var(--soft); }
+.proj.active { background:var(--soft); color:var(--ink); font-weight:600; }
+.proj .ic { font-size:14px; }
+.proj .nm { flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.proj .x { display:none; border:0; background:transparent; color:var(--faint); font-size:12px;
+           padding:2px 5px; border-radius:5px; }
+.proj:hover .x { display:block; }
+.proj .x:hover { color:#dc2626; background:#fee; }
+.proj.active .dot2 { width:6px; height:6px; border-radius:50%; background:#22c55e; }
 #recents { flex:1; overflow-y:auto; padding:0 8px 16px; }
 .recent { position:relative; padding:8px 12px; border-radius:8px; cursor:pointer; font-size:13.5px;
           color:#404040; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
@@ -82,6 +98,33 @@ nav .grow { flex:1; }
 .modebtn.cowork.on { color:#0B3945; }
 #modedesc { font-size:12.5px; color:var(--faint); }
 #main.cowork #modebar { background:linear-gradient(90deg,#FBF4F0,transparent 60%); }
+/* workspace folder chip */
+#folderbar { display:none; align-items:center; gap:8px; margin-left:auto; }
+#main.cowork #folderbar { display:flex; }
+#folderchip { display:flex; align-items:center; gap:7px; border:1px solid var(--line); background:#fff;
+              border-radius:8px; padding:6px 12px; font-size:12.5px; color:#404040; cursor:pointer; max-width:340px; }
+#folderchip:hover { border-color:#c9c9c9; background:var(--hover); }
+#folderchip .fp { white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+                  font-family:ui-monospace,monospace; direction:rtl; text-align:left; }
+/* folder dialog */
+#folderdlg { position:fixed; inset:0; background:rgba(0,0,0,.28); display:none; align-items:center;
+             justify-content:center; z-index:50; }
+#folderdlg.show { display:flex; }
+.fdcard { background:#fff; border-radius:16px; width:460px; max-width:92vw; padding:24px;
+          box-shadow:0 20px 60px rgba(0,0,0,.25); }
+.fdcard h3 { font-size:17px; font-weight:700; margin-bottom:6px; }
+.fdcard p { font-size:13px; color:var(--sub); margin-bottom:16px; }
+.fdcard input { width:100%; border:1px solid var(--line); border-radius:9px; padding:10px 12px;
+                font:13px ui-monospace,monospace; }
+.fdcard .row { display:flex; align-items:center; gap:8px; margin-top:12px; font-size:13px; color:#404040; }
+.fdcard .files { margin-top:14px; max-height:180px; overflow-y:auto; border:1px solid var(--line);
+                 border-radius:9px; padding:8px; font-size:12.5px; color:#555; }
+.fdcard .files .it { padding:3px 6px; }
+.fdcard .actions { display:flex; justify-content:flex-end; gap:10px; margin-top:18px; }
+.fdcard .actions button { border:0; border-radius:9px; padding:9px 18px; font-size:13.5px; font-weight:600; cursor:pointer; }
+.fd-save { background:var(--ink); color:#fff; }
+.fd-cancel { background:transparent; color:var(--sub); }
+#fdmsg { font-size:12.5px; margin-top:10px; }
 #chat { flex:1; overflow-y:auto; }
 #thread { max-width:720px; margin:0 auto; padding:32px 24px 8px; }
 .turn { margin-bottom:26px; }
@@ -109,6 +152,23 @@ nav .grow { flex:1; }
        border:1px solid var(--line); border-radius:16px; padding:10px 10px 10px 18px;
        box-shadow:0 1px 3px rgba(0,0,0,.04); transition:.15s; background:#fff; }
 #box:focus-within { border-color:#c9c9c9; box-shadow:0 2px 8px rgba(0,0,0,.06); }
+#attach { width:34px; height:34px; border:0; border-radius:99px; background:transparent; color:var(--sub);
+          display:none; align-items:center; justify-content:center; flex-shrink:0; }
+#main.cowork #attach { display:flex; }
+#attach:hover { background:var(--soft); color:var(--ink); }
+#composer { position:relative; }
+#attachpop { display:none; position:absolute; left:24px; bottom:78px; width:340px; max-height:300px;
+             overflow-y:auto; background:#fff; border:1px solid var(--line); border-radius:12px;
+             box-shadow:0 8px 30px rgba(0,0,0,.14); padding:8px; z-index:20; }
+#attachpop.show { display:block; }
+#attachpop .aphead { font-size:11.5px; color:var(--faint); padding:6px 8px 8px; }
+#attachpop .aphead span { font-family:ui-monospace,monospace; }
+.apitem { display:flex; align-items:center; gap:9px; padding:8px 10px; border-radius:8px;
+          font-size:13px; cursor:pointer; }
+.apitem:hover { background:var(--soft); }
+.apitem .nm { flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.apitem .go { color:var(--faint); font-size:11px; }
+.apempty { padding:14px 10px; color:var(--faint); font-size:12.5px; text-align:center; }
 #input { flex:1; border:0; outline:0; resize:none; font:inherit; max-height:160px; background:transparent; }
 #send { width:34px; height:34px; border:0; border-radius:99px; background:var(--ink); color:#fff;
         display:flex; align-items:center; justify-content:center; flex-shrink:0; transition:.15s; }
@@ -257,6 +317,10 @@ nav .grow { flex:1; }
 <div id="wrap">
   <div id="side">
     <button id="newBtn" onclick="newChat()"><span style="font-size:16px">＋</span> สนทนาใหม่</button>
+    <div class="label projlabel">โปรเจกต์
+      <button id="newProj" onclick="openNewProject()" title="เพิ่มโปรเจกต์ใหม่">＋</button>
+    </div>
+    <div id="projects"></div>
     <div class="label">Recents</div>
     <div id="recents"></div>
   </div>
@@ -267,6 +331,11 @@ nav .grow { flex:1; }
         <button class="modebtn cowork" id="mode-cowork" onclick="setMode('cowork')">🛠 Cowork</button>
       </div>
       <span id="modedesc">คุยกับโมเดลอย่างเดียว — ตอบเร็ว ไม่ใช้เครื่องมือ</span>
+      <div id="folderbar">
+        <div id="folderchip" onclick="openFolder()" title="โฟลเดอร์ทำงานของ agent">
+          📁 <span class="fp" id="folderPath">~/RnaiWorkspace</span>
+        </div>
+      </div>
     </div>
     <div id="chat"><div id="thread">
       <div id="empty">
@@ -278,10 +347,17 @@ nav .grow { flex:1; }
     </div></div>
     <div id="composer">
       <div id="box">
+        <button id="attach" onclick="toggleAttach(event)" title="แนบไฟล์/โฟลเดอร์จาก workspace">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M21 12.5l-8 8a5 5 0 01-7-7l8-8a3.5 3.5 0 015 5l-8 8a2 2 0 01-3-3l7.5-7.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
         <textarea id="input" rows="1" placeholder="พิมพ์ข้อความถึง Rnai..."></textarea>
         <button id="send" onclick="send()" title="ส่ง">
           <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M8 13V3M3.5 7.5L8 3l4.5 4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </button>
+      </div>
+      <div id="attachpop">
+        <div class="aphead">แนบจากโฟลเดอร์ทำงาน <span id="apdir"></span></div>
+        <div id="aplist"></div>
       </div>
       <div id="hint">Enter ส่ง · Shift+Enter ขึ้นบรรทัดใหม่ · ประวัติอยู่ที่ ~/.rnai/history</div>
     </div>
@@ -330,6 +406,20 @@ nav .grow { flex:1; }
       เปิดหน้าจอนี้ได้ทุกเมื่อด้วย <code>rnai ui</code> · ตั้งค่า API keys ที่แท็บ Settings
     </div>
   </div></div>
+</div>
+<div id="folderdlg">
+  <div class="fdcard">
+    <h3>📁 โฟลเดอร์ทำงาน</h3>
+    <p>Cowork จะอ่าน/เขียนไฟล์อ้างอิงจากโฟลเดอร์นี้ (เหมือนเปิดโปรเจกต์ใน IDE)</p>
+    <input id="fdInput" placeholder="~/RnaiWorkspace หรือ /Users/you/projects/myapp">
+    <label class="row"><input type="checkbox" id="fdCreate"> สร้างโฟลเดอร์นี้ถ้ายังไม่มี</label>
+    <div class="files" id="fdFiles"></div>
+    <div id="fdmsg"></div>
+    <div class="actions">
+      <button class="fd-cancel" onclick="$('folderdlg').classList.remove('show')">ยกเลิก</button>
+      <button class="fd-save" onclick="saveFolder()">ใช้โฟลเดอร์นี้</button>
+    </div>
+  </div>
 </div>
 <script>
 let sid = null;
@@ -409,6 +499,7 @@ function setMode(mode){
     ? 'สั่งงานที่ต้องค้นข้อมูล จัดการไฟล์ หรือทำหลายขั้นตอน แล้วดู agent ทำให้ทีละสเต็ป'
     : 'โมเดลของคุณเอง รันบนเครื่อง ประวัติเก็บในเครื่อง';
   renderChips();
+  if (agentMode) loadFolder();
 }
 
 async function sendAgent(text) {
@@ -448,6 +539,114 @@ async function sendAgent(text) {
     }
   }, 1000);
 }
+/* ── Projects ── */
+async function loadProjects(){
+  const d = await (await fetch('/api/projects')).json();
+  $('projects').innerHTML = d.projects.map(p => `
+    <div class="proj ${p.active?'active':''}" onclick="switchProject('${esc(p.path)}')" title="${esc(p.path)}">
+      <span class="ic">${p.active?'📂':'📁'}</span>
+      <span class="nm">${esc(p.name||'workspace')}</span>
+      ${p.active?'<span class="dot2"></span>':''}
+      <button class="x" title="เอาออกจากรายการ" onclick="removeProject(event,'${esc(p.path)}')">✕</button>
+    </div>`).join('');
+}
+async function switchProject(path){
+  await fetch('/api/projects', { method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ path }) });
+  loadProjects();
+  if (agentMode) loadFolder();
+  toast('เปิดโปรเจกต์: ' + path.split('/').pop());
+}
+function openNewProject(){
+  const name = prompt('ชื่อโปรเจกต์ใหม่ (จะสร้างโฟลเดอร์ใน ~/RnaiProjects/)\\nหรือใส่ path เต็มก็ได้:');
+  if (!name) return;
+  const path = name.includes('/') ? name : '~/RnaiProjects/' + name;
+  fetch('/api/projects', { method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ path, create: true }) })
+    .then(r=>r.json()).then(d=>{
+      if (d.ok) { loadProjects(); if (agentMode) loadFolder();
+        if (!agentMode) setMode('cowork'); toast('สร้างโปรเจกต์แล้ว: ' + path.split('/').pop()); }
+      else alert(d.error || 'สร้างไม่สำเร็จ');
+    });
+}
+async function removeProject(ev, path){
+  ev.stopPropagation();
+  await fetch('/api/projects/remove', { method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ path }) });
+  loadProjects();
+}
+function toast(msg){
+  let t = document.getElementById('toast');
+  if (!t) { t = document.createElement('div'); t.id='toast'; document.body.appendChild(t);
+    t.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#171717;color:#fff;padding:9px 18px;border-radius:99px;font-size:13px;z-index:100;opacity:0;transition:.2s'; }
+  t.textContent = msg; t.style.opacity='1';
+  clearTimeout(t._h); t._h = setTimeout(()=>t.style.opacity='0', 1800);
+}
+
+/* ── Attach file/folder from workspace ── */
+let apSub = '';  // subfolder ที่กำลังเปิดในป็อปอัป
+async function toggleAttach(ev){
+  ev.stopPropagation();
+  const pop = $('attachpop');
+  if (pop.classList.contains('show')) { pop.classList.remove('show'); return; }
+  apSub = ''; await renderAttach(); pop.classList.add('show');
+}
+async function renderAttach(){
+  const url = '/api/workspace' + (apSub ? '?sub=' + encodeURIComponent(apSub) : '');
+  const d = await (await fetch(url)).json();
+  $('apdir').textContent = homeShort(d.dir) + (apSub ? '/' + apSub : '');
+  let html = '';
+  if (apSub) html += `<div class="apitem" onclick="apUp()"><span>↩︎</span><span class="nm">.. ย้อนกลับ</span></div>`;
+  if (!d.entries.length && !apSub) html += '<div class="apempty">โฟลเดอร์ว่าง — สร้างไฟล์แล้วค่อยแนบได้</div>';
+  html += d.entries.map(e => e.dir
+    ? `<div class="apitem" onclick="apOpen('${esc(e.name)}')"><span>📁</span><span class="nm">${esc(e.name)}</span><span class="go">เปิด ›</span></div>`
+    : `<div class="apitem" onclick="apPick('${esc(e.name)}')"><span>📄</span><span class="nm">${esc(e.name)}</span><span class="go">แนบ</span></div>`
+  ).join('');
+  html += `<div class="apitem" onclick="apPickFolder()" style="border-top:1px solid var(--line);margin-top:6px;color:#0B3945">
+             <span>📎</span><span class="nm">แนบทั้งโฟลเดอร์นี้</span></div>`;
+  $('aplist').innerHTML = html;
+}
+function apOpen(name){ apSub = apSub ? apSub + '/' + name : name; renderAttach(); }
+function apUp(){ apSub = apSub.includes('/') ? apSub.slice(0, apSub.lastIndexOf('/')) : ''; renderAttach(); }
+function apInsert(ref){
+  const cur = $('input').value;
+  $('input').value = (cur ? cur.replace(/\\s*$/, '') + ' ' : '') + ref + ' ';
+  $('input').focus(); autosize();
+  $('attachpop').classList.remove('show');
+}
+function apPick(name){ apInsert('`' + (apSub ? apSub + '/' : '') + name + '`'); }
+function apPickFolder(){ apInsert('`' + (apSub || '.') + '/`'); }
+document.addEventListener('click', e => {
+  const pop = $('attachpop');
+  if (pop && pop.classList.contains('show') && !pop.contains(e.target) && e.target.id !== 'attach')
+    pop.classList.remove('show');
+});
+
+/* ── Workspace folder ── */
+function homeShort(p){ return p.replace(/^\\/Users\\/[^/]+/, '~').replace(/^\\/home\\/[^/]+/, '~'); }
+async function loadFolder(){
+  const d = await (await fetch('/api/workspace')).json();
+  $('folderPath').textContent = homeShort(d.dir);
+  return d;
+}
+async function openFolder(){
+  const d = await loadFolder();
+  $('fdInput').value = d.dir;
+  $('fdFiles').innerHTML = d.entries.length
+    ? d.entries.map(e => `<div class="it">${e.dir?'📁':'📄'} ${esc(e.name)}${e.dir?'/':''}</div>`).join('')
+    : '<div class="it" style="color:#aaa">(โฟลเดอร์ว่าง)</div>';
+  $('fdmsg').textContent = '';
+  $('folderdlg').classList.add('show');
+}
+async function saveFolder(){
+  const dir = $('fdInput').value.trim();
+  const r = await fetch('/api/workspace', { method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ dir, create: $('fdCreate').checked }) });
+  const d = await r.json();
+  if (d.ok) { $('folderPath').textContent = homeShort(d.dir); $('folderdlg').classList.remove('show'); }
+  else { $('fdmsg').innerHTML = '<span class="err">'+esc(d.error)+'</span>'; }
+}
+
 async function approve(jobId, ok, btn){
   btn.parentElement.querySelectorAll('button').forEach(b=>b.disabled=true);
   await fetch('/api/agent/approve', { method:'POST', headers:{'Content-Type':'application/json'},
@@ -509,6 +708,7 @@ input.addEventListener('input', autosize);
 input.addEventListener('keydown', e => {
   if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } });
 renderChips();
+loadProjects();
 
 /* ── Views: chat / templates / settings / download ── */
 function hideAll(){ $('main').style.display='none'; $('side').style.display='none';
@@ -766,6 +966,31 @@ class Handler(BaseHTTPRequestHandler):
             self._json({"status": job["status"], "steps": job["steps"],
                         "pending": job["pending"], "answer": job["answer"],
                         "session_id": job["session_id"]})
+        elif self.path == "/api/projects":
+            cfg = config.load()
+            active = cfg.get("WORKSPACE_DIR")
+            projs = []
+            for p in cfg.get("PROJECTS", []):
+                from pathlib import Path as _P
+                projs.append({"path": p, "name": _P(p).name, "active": p == active,
+                              "exists": _P(p).expanduser().exists()})
+            self._json({"projects": projs, "active": active})
+        elif self.path.startswith("/api/workspace"):
+            from urllib.parse import parse_qs, urlparse
+            from . import tools
+            wd = tools.workspace_dir()
+            sub = (parse_qs(urlparse(self.path).query).get("sub") or [""])[0]
+            target = (wd / sub) if sub else wd
+            entries = []
+            try:
+                # กันหลุดออกนอก workspace
+                target = target.resolve()
+                if wd.resolve() in target.parents or target == wd.resolve():
+                    for e in sorted(target.iterdir(), key=lambda p: (p.is_file(), p.name.lower()))[:200]:
+                        entries.append({"name": e.name, "dir": e.is_dir()})
+            except Exception:
+                pass
+            self._json({"dir": str(wd), "entries": entries})
         elif self.path == "/api/tasks":
             self._json(wk.load_tasks())
         elif self.path == "/api/sessions":
@@ -787,6 +1012,56 @@ class Handler(BaseHTTPRequestHandler):
             self._json({"error": "not found"}, 404)
 
     def do_POST(self):
+        if self.path == "/api/projects":
+            try:
+                from pathlib import Path as _P
+                length = int(self.headers.get("Content-Length", 0))
+                req = json.loads(self.rfile.read(length))
+                raw = (req.get("path") or "").strip()
+                if not raw:
+                    return self._json({"ok": False, "error": "path ว่าง"})
+                p = _P(raw).expanduser()
+                if req.get("create"):
+                    p.mkdir(parents=True, exist_ok=True)
+                if not p.exists():
+                    return self._json({"ok": False, "error": f"ไม่พบโฟลเดอร์: {p}"})
+                cfg = config.load()
+                projs = cfg.get("PROJECTS", [])
+                if str(p) not in projs:
+                    projs.insert(0, str(p))
+                cfg["PROJECTS"] = projs
+                cfg["WORKSPACE_DIR"] = str(p)
+                config.save(cfg)
+                return self._json({"ok": True, "path": str(p)})
+            except Exception as e:
+                return self._json({"ok": False, "error": str(e)})
+        if self.path == "/api/projects/remove":
+            try:
+                length = int(self.headers.get("Content-Length", 0))
+                req = json.loads(self.rfile.read(length))
+                cfg = config.load()
+                cfg["PROJECTS"] = [p for p in cfg.get("PROJECTS", []) if p != req.get("path")]
+                config.save(cfg)
+                return self._json({"ok": True})
+            except Exception as e:
+                return self._json({"ok": False, "error": str(e)})
+        if self.path == "/api/workspace":
+            try:
+                length = int(self.headers.get("Content-Length", 0))
+                req = json.loads(self.rfile.read(length))
+                raw = (req.get("dir") or "").strip()
+                if not raw:
+                    return self._json({"ok": False, "error": "path ว่าง"})
+                from pathlib import Path as _P
+                p = _P(raw).expanduser()
+                if req.get("create"):
+                    p.mkdir(parents=True, exist_ok=True)
+                if not p.exists():
+                    return self._json({"ok": False, "error": f"ไม่พบโฟลเดอร์: {p} (ติ๊ก 'สร้างใหม่' เพื่อสร้าง)"})
+                config.set_value("WORKSPACE_DIR", str(p))
+                return self._json({"ok": True, "dir": str(p)})
+            except Exception as e:
+                return self._json({"ok": False, "error": str(e)})
         if self.path == "/api/agent":
             try:
                 length = int(self.headers.get("Content-Length", 0))

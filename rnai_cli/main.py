@@ -261,6 +261,31 @@ def task_run(task_id: str):
     w.run_task(t)
 
 
+@app.command()
+def folder(path: Optional[str] = typer.Argument(None, help="ตั้งโฟลเดอร์ทำงาน (เว้นว่าง = ดูปัจจุบัน)"),
+           create: bool = typer.Option(False, "--create", "-c", help="สร้างถ้ายังไม่มี")):
+    """โฟลเดอร์ทำงานของ agent (เหมือนเปิดโปรเจกต์ใน IDE)"""
+    from pathlib import Path as _P
+    from . import config as cfg
+    if not path:
+        cur = cfg.get("WORKSPACE_DIR")
+        console.print(f"📁 โฟลเดอร์ทำงานปัจจุบัน: [cyan]{cur}[/cyan]")
+        p = _P(cur)
+        if p.exists():
+            items = sorted(p.iterdir())[:30]
+            for e in items:
+                console.print(f"  {'📁' if e.is_dir() else '📄'} {e.name}")
+        return
+    p = _P(path).expanduser()
+    if create:
+        p.mkdir(parents=True, exist_ok=True)
+    if not p.exists():
+        console.print(f"[red]ไม่พบโฟลเดอร์ {p}[/red] — เพิ่ม --create เพื่อสร้าง")
+        raise typer.Exit(1)
+    cfg.set_value("WORKSPACE_DIR", str(p))
+    console.print(f"[green]✓ ตั้งโฟลเดอร์ทำงานเป็น[/green] {p}")
+
+
 # ── templates ───────────────────────────────────────────────────────────────
 @app.command("templates")
 def templates_cmd(

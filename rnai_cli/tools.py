@@ -21,6 +21,19 @@ NON_INTERACTIVE = False
 # ถ้าตั้งไว้ write_file/run_command จะถามผ่านหน้าเว็บแทน terminal
 WEB_APPROVAL = None
 
+
+def workspace_dir() -> Path:
+    """โฟลเดอร์ทำงานปัจจุบัน (สร้างให้ถ้ายังไม่มี)"""
+    d = Path(config.get("WORKSPACE_DIR")).expanduser()
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
+
+def resolve_path(path: str) -> Path:
+    """แปลง path ที่ agent ให้มา — ถ้าเป็น relative จะอิงจากโฟลเดอร์ทำงาน"""
+    p = Path(path).expanduser()
+    return p if p.is_absolute() else workspace_dir() / p
+
 # ── OpenAI tools schema (ให้โมเดลวางแผนเรียก) ──────────────────────────────
 TOOL_SCHEMAS = [
     {"type": "function", "function": {
@@ -31,17 +44,31 @@ TOOL_SCHEMAS = [
         }, "required": ["query"]},
     }},
     {"type": "function", "function": {
-        "name": "read_file",
-        "description": "Read a text file from the user's machine. Returns up to ~15000 chars.",
+        "name": "list_dir",
+        "description": "List files and folders in the workspace (or a subfolder). Use this first to see what's in the working folder.",
         "parameters": {"type": "object", "properties": {
-            "path": {"type": "string", "description": "Absolute or ~ path"},
+            "path": {"type": "string", "description": "Subfolder path, empty for workspace root"},
+        }},
+    }},
+    {"type": "function", "function": {
+        "name": "make_dir",
+        "description": "Create a new folder inside the workspace (like mkdir -p).",
+        "parameters": {"type": "object", "properties": {
+            "path": {"type": "string", "description": "Folder path relative to workspace"},
+        }, "required": ["path"]},
+    }},
+    {"type": "function", "function": {
+        "name": "read_file",
+        "description": "Read a text file. Relative paths resolve inside the workspace folder. Returns up to ~15000 chars.",
+        "parameters": {"type": "object", "properties": {
+            "path": {"type": "string", "description": "Path (relative = inside workspace)"},
         }, "required": ["path"]},
     }},
     {"type": "function", "function": {
         "name": "write_file",
-        "description": "Write/overwrite a text file. The user will be asked to confirm before writing.",
+        "description": "Write/overwrite a text file. Relative paths resolve inside the workspace folder. The user is asked to confirm before writing.",
         "parameters": {"type": "object", "properties": {
-            "path": {"type": "string"},
+            "path": {"type": "string", "description": "Path (relative = inside workspace)"},
             "content": {"type": "string"},
         }, "required": ["path", "content"]},
     }},
@@ -99,8 +126,36 @@ def web_search(query: str) -> str:
         return f"ERROR: search failed — {e}"
 
 
+def list_dir(path: str = "") -> str:
+    base = resolve_path(path) if path else workspace_dir()
+    if not base.exists():
+        return f"ERROR: folder not found: {base}"
+    if base.is_file():
+        return f"(นี่คือไฟล์ ไม่ใช่โฟลเดอร์: {base})"
+    entries = sorted(base.iterdir(), key=lambda p: (p.is_file(), p.name.lower()))
+    if not entries:
+        return f"(โฟลเดอร์ว่าง: {base})"
+    lines = [f"📁 {base}"]
+    for e in entries[:200]:
+        if e.is_dir():
+            lines.append(f"  📁 {e.name}/")
+        else:
+            kb = e.stat().st_size / 1024
+            lines.append(f"  📄 {e.name} ({kb:.0f} KB)")
+    return "\n".join(lines)
+
+
+def make_dir(path: str) -> str:
+    p = resolve_path(path)
+    if WEB_APPROVAL is not None:
+        if not WEB_APPROVAL({"tool": "make_dir", "title": f"สร้างโฟลเดอร์: {p}", "preview": str(p)}):
+            return "DENIED: user rejected."
+    p.mkdir(parents=True, exist_ok=True)
+    return f"OK: created folder {p}"
+
+
 def read_file(path: str) -> str:
-    p = Path(path).expanduser()
+    p = resolve_path(path)
     if not p.exists():
         return f"ERROR: file not found: {p}"
     try:
@@ -113,7 +168,7 @@ def read_file(path: str) -> str:
 
 
 def write_file(path: str, content: str) -> str:
-    p = Path(path).expanduser()
+    p = resolve_path(path)
     if WEB_APPROVAL is not None:
         ok = WEB_APPROVAL({"tool": "write_file", "title": f"เขียนไฟล์: {p}",
                            "preview": content[:800]})
@@ -123,9 +178,7 @@ def write_file(path: str, content: str) -> str:
         p.write_text(content)
         return f"OK: wrote {len(content)} chars to {p}"
     if NON_INTERACTIVE:
-        # Worker mode: เขียนได้เองในโฟลเดอร์ผลงาน ~/.rnai/outputs เพื่อความปลอดภัย
-        if not p.is_absolute() or not str(p).startswith(str(Path.home())):
-            p = Path.home() / ".rnai" / "outputs" / p.name
+        # Worker mode: เขียนลงโฟลเดอร์ทำงานที่ผู้ใช้ตั้งไว้ (relative path อยู่ใน workspace แล้ว)
         p.parent.mkdir(parents=True, exist_ok=True)
         p.write_text(content)
         return f"OK: wrote {len(content)} chars to {p}"
@@ -196,6 +249,8 @@ def rnai_skill(skill: str, text: str) -> str:
 
 IMPLEMENTATIONS = {
     "web_search": web_search,
+    "list_dir": list_dir,
+    "make_dir": make_dir,
     "read_file": read_file,
     "write_file": write_file,
     "run_command": run_command,
