@@ -10,6 +10,8 @@ import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from . import config, history
+from . import templates as tpl
+from . import worker as wk
 from .providers import get_provider
 
 PORT = 8765
@@ -129,6 +131,37 @@ nav .grow { flex:1; }
 .st.on { background:#22c55e; }
 .saved { color:#22c55e; font-size:12.5px; }
 
+/* ── Templates ── */
+#tpl { display:none; flex:1; overflow-y:auto; }
+#tpl.show { display:block; }
+#tplwrap { max-width:820px; margin:0 auto; padding:40px 24px 80px; }
+#tplwrap h2 { font-size:22px; font-weight:700; letter-spacing:-.02em; }
+#tplwrap .sub { color:var(--sub); font-size:14px; margin:4px 0 24px; }
+.tplcat { font-size:12px; font-weight:600; color:var(--faint); text-transform:uppercase;
+          letter-spacing:.06em; margin:26px 0 10px; }
+.cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:10px; }
+.card { border:1px solid var(--line); border-radius:var(--r); padding:14px 16px; cursor:pointer;
+        transition:.15s; background:#fff; }
+.card:hover { border-color:#c9c9c9; box-shadow:0 2px 8px rgba(0,0,0,.05); }
+.card .t { font-size:14.5px; font-weight:600; display:flex; gap:8px; align-items:center; }
+.card .p { font-size:12.5px; color:var(--sub); margin-top:4px; display:-webkit-box;
+           -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.card .badge { font-size:11px; color:var(--faint); margin-top:8px; }
+/* ฟอร์มใช้ template */
+#tplform { border:1px solid var(--line); border-radius:14px; padding:20px; margin-bottom:24px;
+           background:var(--hover); display:none; }
+#tplform.show { display:block; }
+#tplform h3 { font-size:16px; margin-bottom:4px; }
+#tplform .fp { font-size:12.5px; color:var(--sub); margin-bottom:14px; white-space:pre-wrap; }
+.frow { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
+.frow label { font-size:13px; width:180px; color:#404040; }
+.frow input { flex:1; border:1px solid var(--line); border-radius:8px; padding:8px 12px; font:13.5px inherit; }
+#tplform .actions { display:flex; gap:10px; margin-top:14px; align-items:center; }
+#tplform .go { border:0; background:var(--ink); color:#fff; border-radius:8px; padding:9px 20px;
+               font-size:13.5px; font-weight:600; }
+#tplform .cancel { border:0; background:transparent; color:var(--sub); font-size:13px; }
+#tplmsg { font-size:13px; }
+
 /* ── Download ── */
 #download { display:none; flex:1; overflow-y:auto; }
 #download.show { display:block; }
@@ -163,6 +196,7 @@ nav .grow { flex:1; }
     Rnai
   </div>
   <a href="#" onclick="showChat();return false">Chat</a>
+  <a href="#" onclick="showTemplates();return false">Templates</a>
   <a href="#" onclick="showSettings();return false">Settings</a>
   <a href="#" onclick="showDownload();return false">Download</a>
   <a href="https://rnai-io.vercel.app" target="_blank">Rnai.io</a>
@@ -207,6 +241,12 @@ nav .grow { flex:1; }
     <h2>Settings</h2>
     <div class="sub">API keys และการตั้งค่า — บันทึกที่ ~/.rnai/config.json บนเครื่องคุณเท่านั้น</div>
     <div id="setlist"></div>
+  </div></div>
+  <div id="tpl"><div id="tplwrap">
+    <h2>คลัง Templates</h2>
+    <div class="sub">งานสำเร็จรูปพร้อมใช้ — ⏰ task เข้าคิว Worker · 💬 chat คุยทันที · 🤖 agent รันใน Terminal</div>
+    <div id="tplform"></div>
+    <div id="tpllist"></div>
   </div></div>
   <div id="download"><div id="dlwrap">
     <svg width="64" height="64" viewBox="0 0 512 512"><rect width="512" height="512" rx="116" fill="#0B3945"/><path d="M196 196v160" stroke="#fff" stroke-width="62" stroke-linecap="round"/><path d="M196 300q0-104 110-104" stroke="#fff" stroke-width="62" stroke-linecap="round" fill="none"/><circle cx="382" cy="196" r="34" fill="#D77757"/></svg>
@@ -298,12 +338,74 @@ input.addEventListener('input', autosize);
 input.addEventListener('keydown', e => {
   if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } });
 
-/* ── Views: chat / settings / download ── */
+/* ── Views: chat / templates / settings / download ── */
 function hideAll(){ $('main').style.display='none'; $('side').style.display='none';
-  $('settings').classList.remove('show'); $('download').classList.remove('show'); }
+  $('settings').classList.remove('show'); $('download').classList.remove('show');
+  $('tpl').classList.remove('show'); }
 function showSettings(){ hideAll(); $('settings').classList.add('show'); loadConfig(); }
 function showDownload(){ hideAll(); $('download').classList.add('show'); }
+function showTemplates(){ hideAll(); $('tpl').classList.add('show'); loadTemplates(); }
 function showChat(){ hideAll(); $('main').style.display='flex'; $('side').style.display='flex'; }
+
+/* ── Templates ── */
+const TYPE_ICON = { task:'⏰', chat:'💬', agent:'🤖' };
+let TPLS = [];
+async function loadTemplates(){
+  const r = await fetch('/api/templates'); TPLS = await r.json();
+  const cats = [...new Set(TPLS.map(t=>t.cat))];
+  $('tpllist').innerHTML = cats.map(c =>
+    `<div class="tplcat">${c}</div><div class="cards">` +
+    TPLS.filter(t=>t.cat===c).map(t =>
+      `<div class="card" onclick="pickTpl('${t.id}')">
+         <div class="t">${TYPE_ICON[t.type]} ${esc(t.title)}</div>
+         <div class="p">${esc(t.prompt)}</div>
+         <div class="badge">${t.sched_txt||''}</div>
+       </div>`).join('') + '</div>').join('');
+}
+function tplVars(prompt){ return [...prompt.matchAll(/\\{([^}]+)\\}/g)].map(m=>m[1]); }
+function pickTpl(id){
+  const t = TPLS.find(x=>x.id===id); if (!t) return;
+  const vars = tplVars(t.prompt);
+  let rows = vars.map((v,i) =>
+    `<div class="frow"><label>${esc(v)}</label><input id="tv-${i}" placeholder="กรอก${esc(v)}"></div>`).join('');
+  if (t.type==='task' && t.schedule && t.schedule.daily !== undefined)
+    rows += `<div class="frow"><label>รันทุกวันเวลา (HH:MM)</label><input id="tv-sched" value="${t.schedule.daily}"></div>`;
+  if (t.type==='task' && t.schedule && t.schedule.every !== undefined)
+    rows += `<div class="frow"><label>รันทุกกี่นาที</label><input id="tv-sched" value="${t.schedule.every}"></div>`;
+  if (t.type==='task' && t.schedule && t.schedule.at !== undefined)
+    rows += `<div class="frow"><label>รันเมื่อ (YYYY-MM-DD HH:MM)</label><input id="tv-sched" placeholder="2026-07-21 09:30"></div>`;
+  const f = $('tplform');
+  f.innerHTML = `<h3>${TYPE_ICON[t.type]} ${esc(t.title)}</h3><div class="fp">${esc(t.prompt)}</div>${rows}
+    <div class="actions">
+      <button class="go" onclick="useTpl('${t.id}')">${t.type==='task'?'เพิ่มเข้าคิว Worker':t.type==='chat'?'ไปคุยต่อในแชท':'คัดลอกคำสั่ง Terminal'}</button>
+      <button class="cancel" onclick="$('tplform').classList.remove('show')">ยกเลิก</button>
+      <span id="tplmsg"></span>
+    </div>`;
+  f.classList.add('show'); f.scrollIntoView({behavior:'smooth'});
+}
+async function useTpl(id){
+  const t = TPLS.find(x=>x.id===id);
+  let prompt = t.prompt;
+  tplVars(t.prompt).forEach((v,i) => { prompt = prompt.split('{'+v+'}').join($('tv-'+i).value.trim() || v); });
+  if (t.type === 'chat') { showChat(); newChatSoft(); $('input').value = prompt; $('input').focus(); autosize(); return; }
+  if (t.type === 'agent') {
+    navigator.clipboard.writeText('rnai agent "' + prompt.replace(/"/g,'\\\\"') + '"');
+    $('tplmsg').innerHTML = '<span class="saved">✓ คัดลอกแล้ว — วางใน Terminal ได้เลย</span>'; return;
+  }
+  const body = { prompt };
+  const sv = $('tv-sched') ? $('tv-sched').value.trim() : '';
+  if (t.schedule.daily !== undefined) body.daily = sv;
+  else if (t.schedule.every !== undefined) body.every = parseInt(sv);
+  else body.at = sv;
+  const r = await fetch('/api/task', { method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify(body) });
+  const d = await r.json();
+  $('tplmsg').innerHTML = d.ok
+    ? `<span class="saved">✓ เพิ่มงาน ${d.id} แล้ว (${d.sched}) — Worker จะรันตามเวลา</span>`
+    : `<span class="err">${d.error||'ผิดพลาด'}</span>`;
+}
+function newChatSoft(){ sid = null; $('title') && ($('title').textContent='สนทนาใหม่');
+  $('thread').innerHTML=''; loadRecents(); }
 
 const DL = {
   mac:   { cmd:'curl -fsSL https://raw.githubusercontent.com/Rnai-io/Rnai-CLI/main/install.sh | sh', cap:'วางคำสั่งนี้ใน Terminal' },
@@ -425,6 +527,15 @@ class Handler(BaseHTTPRequestHandler):
             self.wfile.write(body)
         elif self.path == "/api/config":
             self._json(config_payload())
+        elif self.path == "/api/templates":
+            out = []
+            for t in tpl.TEMPLATES:
+                s = t.get("schedule", {})
+                sched_txt = (f"ทุกวัน {s['daily']}" if "daily" in s
+                             else f"ทุก {s['every']} นาที" if "every" in s
+                             else "ตั้งเวลาเอง" if "at" in s else "")
+                out.append({**t, "sched_txt": sched_txt, "schedule": s})
+            self._json(out)
         elif self.path == "/api/sessions":
             self._json(history.list_sessions())
         elif self.path.startswith("/api/sessions/"):
@@ -441,6 +552,19 @@ class Handler(BaseHTTPRequestHandler):
             self._json({"error": "not found"}, 404)
 
     def do_POST(self):
+        if self.path == "/api/task":
+            try:
+                length = int(self.headers.get("Content-Length", 0))
+                req = json.loads(self.rfile.read(length))
+                prompt = (req.get("prompt") or "").strip()
+                if not prompt:
+                    return self._json({"ok": False, "error": "prompt ว่าง"})
+                task = wk.add_task(prompt, daily=req.get("daily"),
+                                   every=req.get("every"), at=req.get("at"))
+                return self._json({"ok": True, "id": task["id"],
+                                   "sched": wk.describe_schedule(task["schedule"])})
+            except Exception as e:
+                return self._json({"ok": False, "error": str(e)})
         if self.path == "/api/config":
             try:
                 length = int(self.headers.get("Content-Length", 0))
