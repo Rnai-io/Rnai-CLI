@@ -45,6 +45,11 @@ def chat(
     console.print(Markdown(resp["content"] or "(ไม่มีคำตอบ)"))
     u = resp["usage"]
     console.print(f"[dim]⏱ {resp['elapsed']:.1f}s | tokens {u.get('total_tokens', '?')} | {resp['finish_reason']}[/dim]")
+    # บันทึกลงประวัติ (~/.rnai/history) ให้ Web UI เห็นด้วย
+    from . import history as hist
+    sid = hist.new_session(prompt, p.name)
+    hist.append(sid, "user", prompt)
+    hist.append(sid, "assistant", resp["content"], model=f"{p.name}/{p.model}")
 
 
 # ── status ──────────────────────────────────────────────────────────────────
@@ -144,6 +149,38 @@ def agent(
     answer = run_agent(task, planner_name=planner, voice=voice, max_steps=steps)
     console.print()
     console.print(Panel(Markdown(answer or "(ไม่มีคำตอบ)"), title="✅ ผลลัพธ์", border_style="green"))
+
+
+# ── ui / history ────────────────────────────────────────────────────────────
+@app.command()
+def ui(
+    port: int = typer.Option(8765, "--port"),
+    no_browser: bool = typer.Option(False, "--no-browser", help="ไม่เปิดเบราว์เซอร์อัตโนมัติ"),
+):
+    """เปิด Web UI บนเครื่อง — Recents + แชทต่อเนื่อง (Cowork หน้าแรก)"""
+    from .ui import serve
+    serve(port=port, open_browser=not no_browser)
+
+
+@app.command("history")
+def show_history(limit: int = typer.Option(20, "--limit", "-n")):
+    """ดูรายการสนทนาล่าสุด"""
+    from . import history as hist
+    sessions = hist.list_sessions(limit)
+    if not sessions:
+        console.print("[dim]ยังไม่มีประวัติสนทนา — เริ่มด้วย rnai chat หรือ rnai ui[/dim]")
+        return
+    import datetime
+    table = Table(title=f"Recents ({len(sessions)})")
+    table.add_column("เมื่อ", style="dim")
+    table.add_column("หัวข้อ", style="cyan", overflow="fold")
+    table.add_column("โมเดล")
+    table.add_column("ข้อความ", justify="right")
+    for s in sessions:
+        when = datetime.datetime.fromtimestamp(s["updated"]).strftime("%d/%m %H:%M")
+        table.add_row(when, s["title"], s["model"], str(s["count"]))
+    console.print(table)
+    console.print("[dim]เปิดดูเต็มๆ ใน Web UI: rnai ui[/dim]")
 
 
 # ── config ──────────────────────────────────────────────────────────────────
