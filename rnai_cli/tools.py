@@ -17,6 +17,10 @@ console = Console()
 # โหมดเบื้องหลัง (Worker): True = เขียนไฟล์ได้โดยไม่ถาม แต่ปิด shell command เพื่อความปลอดภัย
 NON_INTERACTIVE = False
 
+# โหมดเว็บ (Cowork UI): ฟังก์ชัน callback รับ dict รายละเอียด action → คืน True/False
+# ถ้าตั้งไว้ write_file/run_command จะถามผ่านหน้าเว็บแทน terminal
+WEB_APPROVAL = None
+
 # ── OpenAI tools schema (ให้โมเดลวางแผนเรียก) ──────────────────────────────
 TOOL_SCHEMAS = [
     {"type": "function", "function": {
@@ -110,6 +114,14 @@ def read_file(path: str) -> str:
 
 def write_file(path: str, content: str) -> str:
     p = Path(path).expanduser()
+    if WEB_APPROVAL is not None:
+        ok = WEB_APPROVAL({"tool": "write_file", "title": f"เขียนไฟล์: {p}",
+                           "preview": content[:800]})
+        if not ok:
+            return "DENIED: user rejected the write."
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(content)
+        return f"OK: wrote {len(content)} chars to {p}"
     if NON_INTERACTIVE:
         # Worker mode: เขียนได้เองในโฟลเดอร์ผลงาน ~/.rnai/outputs เพื่อความปลอดภัย
         if not p.is_absolute() or not str(p).startswith(str(Path.home())):
@@ -129,6 +141,17 @@ def write_file(path: str, content: str) -> str:
 def run_command(command: str, reason: str = "") -> str:
     if NON_INTERACTIVE:
         return "DENIED: run_command is disabled in background worker mode for safety. Complete the task without shell commands."
+    if WEB_APPROVAL is not None:
+        ok = WEB_APPROVAL({"tool": "run_command", "title": "รันคำสั่ง shell",
+                           "preview": f"$ {command}\n\nเหตุผล: {reason or '-'}"})
+        if not ok:
+            return "DENIED: user rejected the command."
+        try:
+            res = subprocess.run(command, shell=True, capture_output=True, text=True, timeout=120)
+            out = (res.stdout or "") + (res.stderr or "")
+            return f"exit={res.returncode}\n{out[:8000].strip()}"
+        except Exception as e:
+            return f"ERROR: {e}"
     console.print(Panel(f"[bold]{command}[/bold]\n\nเหตุผล: {reason or '-'}",
                         title="⚡ agent ขอรันคำสั่ง", border_style="red"))
     if not typer.confirm("อนุญาตให้รันคำสั่งนี้?", default=False):

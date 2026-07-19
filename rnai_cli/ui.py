@@ -6,6 +6,8 @@
 from __future__ import annotations
 import json
 import threading
+import time
+import uuid
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
@@ -69,6 +71,17 @@ nav .grow { flex:1; }
 
 /* ── Chat ── */
 #main { flex:1; display:flex; flex-direction:column; min-width:0; }
+/* mode bar (Chat / Cowork) */
+#modebar { display:flex; align-items:center; gap:14px; padding:12px 24px;
+           border-bottom:1px solid var(--line); flex-shrink:0; }
+#modeswitch { display:flex; background:var(--soft); border-radius:99px; padding:3px; gap:2px; }
+.modebtn { border:0; background:transparent; border-radius:99px; padding:6px 18px; font-size:13.5px;
+           font-weight:600; color:var(--sub); display:flex; align-items:center; gap:6px; cursor:pointer; transition:.15s; }
+.modebtn.on { background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.09); }
+.modebtn.chat.on { color:var(--ink); }
+.modebtn.cowork.on { color:#0B3945; }
+#modedesc { font-size:12.5px; color:var(--faint); }
+#main.cowork #modebar { background:linear-gradient(90deg,#FBF4F0,transparent 60%); }
 #chat { flex:1; overflow-y:auto; }
 #thread { max-width:720px; margin:0 auto; padding:32px 24px 8px; }
 .turn { margin-bottom:26px; }
@@ -131,14 +144,47 @@ nav .grow { flex:1; }
 .st.on { background:#22c55e; }
 .saved { color:#22c55e; font-size:12.5px; }
 
-/* ── Templates ── */
-#tpl { display:none; flex:1; overflow-y:auto; }
-#tpl.show { display:block; }
-#tplwrap { max-width:820px; margin:0 auto; padding:40px 24px 80px; }
-#tplwrap h2 { font-size:22px; font-weight:700; letter-spacing:-.02em; }
-#tplwrap .sub { color:var(--sub); font-size:14px; margin:4px 0 24px; }
+/* ── Agent steps + approval ── */
+.steps { font-size:12.5px; color:var(--sub); border-left:2px solid var(--line);
+         padding:4px 14px; margin:6px 0 14px; line-height:1.9; }
+.steps .tl { color:#0B3945; }
+.steps .rs { color:var(--faint); }
+.approvebox { border:1px solid #f3c9b8; background:#FDF3EE; border-radius:12px;
+              padding:14px 16px; margin:10px 0; font-size:13.5px; }
+.approvebox .ttl { font-weight:600; margin-bottom:6px; }
+.approvebox pre { background:#fff; border:1px solid var(--line); border-radius:8px; padding:10px;
+                  font:12px ui-monospace,monospace; white-space:pre-wrap; max-height:180px;
+                  overflow-y:auto; margin:8px 0; }
+.approvebox button { border:0; border-radius:8px; padding:7px 16px; font-size:13px; font-weight:600; margin-right:8px; cursor:pointer; }
+.ap-ok { background:#0B3945; color:#fff; }
+.ap-no { background:#eee; color:#444; }
+
+/* ── Workspace (Templates + Tasks รวมหน้าเดียว) ── */
+#ws { display:none; flex:1; overflow-y:auto; }
+#ws.show { display:block; }
+#wswrap { max-width:860px; margin:0 auto; padding:40px 24px 80px; }
+.wshead h2 { font-size:24px; font-weight:700; letter-spacing:-.02em; }
+.wshead p { color:var(--sub); font-size:14px; margin:4px 0 8px; }
+.wssection { margin-top:34px; }
+.wstitle { display:flex; align-items:center; gap:10px; font-size:16px; font-weight:700;
+           color:var(--ink); padding-bottom:12px; margin-bottom:16px; border-bottom:1px solid var(--line); }
+.wscount { font-size:12px; font-weight:600; color:var(--faint); background:var(--soft);
+           border-radius:99px; padding:2px 10px; }
+.wsnote { font-size:12.5px; color:var(--faint); margin:-4px 0 16px; }
+.wsnote code { background:var(--soft); padding:2px 7px; border-radius:6px; font:12px ui-monospace,monospace; color:#404040; }
+/* task rows */
+.taskrow { border:1px solid var(--line); border-radius:var(--r); padding:14px 16px; margin-bottom:10px;
+           display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+.taskrow .info { flex:1; min-width:220px; }
+.taskrow .tp { font-size:14px; font-weight:500; }
+.taskrow .tm { font-size:12px; color:var(--sub); margin-top:3px; }
+.taskrow button { border:1px solid var(--line); background:#fff; border-radius:8px;
+                  padding:6px 12px; font-size:12.5px; color:#404040; cursor:pointer; }
+.taskrow button:hover { border-color:#c9c9c9; background:var(--hover); }
+.taskrow .danger:hover { color:#dc2626; border-color:#f3c1c1; background:#fff5f5; }
+/* template cards */
 .tplcat { font-size:12px; font-weight:600; color:var(--faint); text-transform:uppercase;
-          letter-spacing:.06em; margin:26px 0 10px; }
+          letter-spacing:.06em; margin:20px 0 10px; }
 .cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:10px; }
 .card { border:1px solid var(--line); border-radius:var(--r); padding:14px 16px; cursor:pointer;
         transition:.15s; background:#fff; }
@@ -196,7 +242,7 @@ nav .grow { flex:1; }
     Rnai
   </div>
   <a href="#" onclick="showChat();return false">Chat</a>
-  <a href="#" onclick="showTemplates();return false">Templates</a>
+  <a href="#" onclick="showWorkspace();return false">Workspace</a>
   <a href="#" onclick="showSettings();return false">Settings</a>
   <a href="#" onclick="showDownload();return false">Download</a>
   <a href="https://rnai-io.vercel.app" target="_blank">Rnai.io</a>
@@ -215,16 +261,19 @@ nav .grow { flex:1; }
     <div id="recents"></div>
   </div>
   <div id="main">
+    <div id="modebar">
+      <div id="modeswitch">
+        <button class="modebtn chat on" id="mode-chat" onclick="setMode('chat')">💬 Chat</button>
+        <button class="modebtn cowork" id="mode-cowork" onclick="setMode('cowork')">🛠 Cowork</button>
+      </div>
+      <span id="modedesc">คุยกับโมเดลอย่างเดียว — ตอบเร็ว ไม่ใช้เครื่องมือ</span>
+    </div>
     <div id="chat"><div id="thread">
       <div id="empty">
         <svg width="56" height="56" viewBox="0 0 512 512" style="margin-bottom:16px"><rect width="512" height="512" rx="116" fill="#0B3945"/><path d="M196 196v160" stroke="#fff" stroke-width="62" stroke-linecap="round"/><path d="M196 300q0-104 110-104" stroke="#fff" stroke-width="62" stroke-linecap="round" fill="none"/><circle cx="382" cy="196" r="34" fill="#D77757"/></svg>
-        <h2>คุยกับ Rnai ได้เลย</h2>
-        <p>โมเดลของคุณเอง รันบนเครื่อง ประวัติเก็บในเครื่อง</p>
-        <div class="chips">
-          <button class="chip" onclick="fill('วางแผนเก็บเงินเดือนละ 5,000 ให้หน่อย')">💰 วางแผนเก็บเงิน</button>
-          <button class="chip" onclick="fill('ช่วยร่างอีเมลขอเลื่อนนัดประชุม')">✉️ ร่างอีเมล</button>
-          <button class="chip" onclick="fill('สรุปหลัก 50/30/20 สั้นๆ')">📊 ถามความรู้</button>
-        </div>
+        <h2 id="emptyTitle">คุยกับ Rnai ได้เลย</h2>
+        <p id="emptyDesc">โมเดลของคุณเอง รันบนเครื่อง ประวัติเก็บในเครื่อง</p>
+        <div class="chips" id="emptyChips"></div>
       </div>
     </div></div>
     <div id="composer">
@@ -242,11 +291,25 @@ nav .grow { flex:1; }
     <div class="sub">API keys และการตั้งค่า — บันทึกที่ ~/.rnai/config.json บนเครื่องคุณเท่านั้น</div>
     <div id="setlist"></div>
   </div></div>
-  <div id="tpl"><div id="tplwrap">
-    <h2>คลัง Templates</h2>
-    <div class="sub">งานสำเร็จรูปพร้อมใช้ — ⏰ task เข้าคิว Worker · 💬 chat คุยทันที · 🤖 agent รันใน Terminal</div>
-    <div id="tplform"></div>
-    <div id="tpllist"></div>
+  <div id="ws"><div id="wswrap">
+    <div class="wshead">
+      <h2>Workspace</h2>
+      <p>เลือกงานสำเร็จรูปจากคลัง แล้วสั่งทำทันทีหรือตั้งเวลาให้ Worker รันอัตโนมัติ</p>
+    </div>
+
+    <div class="wssection">
+      <div class="wstitle"><span>📋 คลัง Templates</span>
+        <span class="wscount" id="tplCount"></span></div>
+      <div id="tplform"></div>
+      <div id="tpllist"></div>
+    </div>
+
+    <div class="wssection">
+      <div class="wstitle"><span>⏰ งานในคิว Worker</span>
+        <span class="wscount" id="taskCount"></span></div>
+      <div class="wsnote">Worker ต้องทำงานอยู่จึงจะรันตามเวลา — ติดตั้งครั้งเดียว: <code>rnai worker --install</code></div>
+      <div id="tasklist"></div>
+    </div>
   </div></div>
   <div id="download"><div id="dlwrap">
     <svg width="64" height="64" viewBox="0 0 512 512"><rect width="512" height="512" rx="116" fill="#0B3945"/><path d="M196 196v160" stroke="#fff" stroke-width="62" stroke-linecap="round"/><path d="M196 300q0-104 110-104" stroke="#fff" stroke-width="62" stroke-linecap="round" fill="none"/><circle cx="382" cy="196" r="34" fill="#D77757"/></svg>
@@ -311,9 +374,117 @@ function addMsg(role, text, model) {
   }
   $('thread').appendChild(turn); return bubble;
 }
+/* ── Mode: chat / cowork ── */
+let agentMode = false;
+const CHIPS = {
+  chat: [
+    ["💰 วางแผนเก็บเงิน", "วางแผนเก็บเงินเดือนละ 5,000 ให้หน่อย"],
+    ["✉️ ร่างอีเมล", "ช่วยร่างอีเมลขอเลื่อนนัดประชุม"],
+    ["📊 ถามความรู้", "สรุปหลัก 50/30/20 สั้นๆ"],
+  ],
+  cowork: [
+    ["🔎 ค้นข่าววันนี้", "ค้นข่าว AI ที่น่าสนใจวันนี้ สรุปเป็นภาษาไทย 3 ข้อ บันทึกเป็นไฟล์ ainews.md"],
+    ["📄 สรุปไฟล์", "อ่านไฟล์ ~/Downloads/เอกสาร.txt แล้วสรุปประเด็นสำคัญเป็นภาษาไทย"],
+    ["💹 เทียบราคา", "ค้นราคาทองคำกับ USD/THB วันนี้ ทำตารางเทียบ บันทึกเป็นไฟล์ market.md"],
+  ],
+};
+function renderChips(){
+  const mode = agentMode ? 'cowork' : 'chat';
+  $('emptyChips').innerHTML = CHIPS[mode].map(c =>
+    `<button class="chip" onclick="fill(${JSON.stringify(c[1]).replace(/"/g,'&quot;')})">${c[0]}</button>`).join('');
+}
+function setMode(mode){
+  agentMode = (mode === 'cowork');
+  $('mode-chat').classList.toggle('on', !agentMode);
+  $('mode-cowork').classList.toggle('on', agentMode);
+  $('main').classList.toggle('cowork', agentMode);
+  $('modedesc').textContent = agentMode
+    ? 'ค้นเว็บ · จัดการไฟล์ · เรียก skills — agent ทำงานหลายขั้นและขออนุมัติก่อนแก้ไข'
+    : 'คุยกับโมเดลอย่างเดียว — ตอบเร็ว ไม่ใช้เครื่องมือ';
+  $('input').placeholder = agentMode
+    ? '🛠 สั่งงาน Cowork — เช่น "ค้นข่าววันนี้ สรุปเป็นไฟล์"...'
+    : 'พิมพ์ข้อความถึง Rnai...';
+  $('emptyTitle').textContent = agentMode ? 'Cowork — ผู้ช่วยลงมือทำ' : 'คุยกับ Rnai ได้เลย';
+  $('emptyDesc').textContent = agentMode
+    ? 'สั่งงานที่ต้องค้นข้อมูล จัดการไฟล์ หรือทำหลายขั้นตอน แล้วดู agent ทำให้ทีละสเต็ป'
+    : 'โมเดลของคุณเอง รันบนเครื่อง ประวัติเก็บในเครื่อง';
+  renderChips();
+}
+
+async function sendAgent(text) {
+  addMsg('user', text);
+  const stepsDiv = document.createElement('div'); stepsDiv.className = 'steps';
+  stepsDiv.innerHTML = '<span class="tl">🛠 agent เริ่มทำงาน...</span>';
+  $('thread').appendChild(stepsDiv); scrollBottom();
+  const r = await fetch('/api/agent', { method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ session_id: sid, message: text }) });
+  const d = await r.json();
+  if (d.error) { stepsDiv.remove(); const b = addMsg('bot', d.error); b.classList.add('err');
+    $('send').disabled = false; return; }
+  sid = d.session_id;
+  let apDiv = null, shown = 0;
+  const poll = setInterval(async () => {
+    const s = await (await fetch('/api/agent/status?id=' + d.job_id)).json();
+    while (shown < s.steps.length) {
+      const st = s.steps[shown++];
+      const line = document.createElement('div');
+      line.className = st.kind === 'tool' ? 'tl' : 'rs';
+      line.textContent = (st.kind === 'tool' ? '🔧 ' : '   ↳ ') + st.text;
+      stepsDiv.appendChild(line); scrollBottom();
+    }
+    if (s.pending && !apDiv) {
+      apDiv = document.createElement('div'); apDiv.className = 'approvebox';
+      apDiv.innerHTML = `<div class="ttl">⚠️ agent ขออนุญาต: ${esc(s.pending.title)}</div>
+        <pre>${esc(s.pending.preview||'')}</pre>
+        <button class="ap-ok" onclick="approve('${d.job_id}',true,this)">อนุญาต</button>
+        <button class="ap-no" onclick="approve('${d.job_id}',false,this)">ปฏิเสธ</button>`;
+      $('thread').appendChild(apDiv); scrollBottom();
+    }
+    if (!s.pending && apDiv) { apDiv.remove(); apDiv = null; }
+    if (s.status !== 'running') {
+      clearInterval(poll); if (apDiv) apDiv.remove();
+      addMsg('bot', s.answer, 'agent'); $('send').disabled = false;
+      loadRecents(); scrollBottom();
+    }
+  }, 1000);
+}
+async function approve(jobId, ok, btn){
+  btn.parentElement.querySelectorAll('button').forEach(b=>b.disabled=true);
+  await fetch('/api/agent/approve', { method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ id: jobId, approve: ok }) });
+}
+
+/* ── Tasks view ── */
+async function loadTaskList(){
+  const tasks = await (await fetch('/api/tasks')).json();
+  const tc = $('taskCount'); if (tc) tc.textContent = tasks.length + ' งาน';
+  const icon = { ok:'🟢', error:'🔴', running:'🟡' };
+  $('tasklist').innerHTML = tasks.length ? tasks.map(t => `
+    <div class="taskrow">
+      <div class="info">
+        <div class="tp">${esc(t.prompt)}</div>
+        <div class="tm">${esc(schedTxt(t.schedule))} · รันแล้ว ${t.runs||0} ครั้ง · ${icon[t.last_status]||'⚪'} ${t.last_status||'รอ'}</div>
+      </div>
+      ${t.last_session ? `<button onclick="openTaskResult('${t.last_session}')">ดูผลล่าสุด</button>` : ''}
+      <button onclick="runTaskNow('${t.id}',this)">▶ รันเลย</button>
+      <button class="danger" onclick="delTask('${t.id}')">ลบ</button>
+    </div>`).join('')
+    : '<div style="color:var(--faint);font-size:14px">ยังไม่มีงานในคิว — ไปเลือกจากแท็บ Templates ได้เลยครับ</div>';
+}
+function schedTxt(s){ if (s.type==='daily') return 'ทุกวัน '+s.time;
+  if (s.type==='every') return 'ทุก '+s.minutes+' นาที';
+  if (s.type==='once') return 'ครั้งเดียวตามเวลา'; return 'รันครั้งเดียว'; }
+function openTaskResult(sessionId){ showChat(); openSession(sessionId); }
+async function runTaskNow(id, btn){ btn.textContent = 'กำลังรัน...'; btn.disabled = true;
+  await fetch('/api/tasks/run', { method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ id }) });
+  setTimeout(()=>{ btn.textContent='▶ รันเลย'; btn.disabled=false; loadTaskList(); }, 4000); }
+async function delTask(id){ await fetch('/api/tasks/'+id, { method:'DELETE' }); loadTaskList(); }
+
 async function send() {
   const text = $('input').value.trim(); if (!text) return;
   $('input').value = ''; autosize(); $('send').disabled = true;
+  if (agentMode) { sendAgent(text); return; }
   addMsg('user', text);
   const wait = addMsg('bot', 'กำลังคิด'); wait.classList.add('typing');
   scrollBottom();
@@ -337,14 +508,15 @@ function autosize(){ input.style.height='auto'; input.style.height = Math.min(in
 input.addEventListener('input', autosize);
 input.addEventListener('keydown', e => {
   if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } });
+renderChips();
 
 /* ── Views: chat / templates / settings / download ── */
 function hideAll(){ $('main').style.display='none'; $('side').style.display='none';
   $('settings').classList.remove('show'); $('download').classList.remove('show');
-  $('tpl').classList.remove('show'); }
+  $('ws').classList.remove('show'); }
+function showWorkspace(){ hideAll(); $('ws').classList.add('show'); loadTemplates(); loadTaskList(); }
 function showSettings(){ hideAll(); $('settings').classList.add('show'); loadConfig(); }
 function showDownload(){ hideAll(); $('download').classList.add('show'); }
-function showTemplates(){ hideAll(); $('tpl').classList.add('show'); loadTemplates(); }
 function showChat(){ hideAll(); $('main').style.display='flex'; $('side').style.display='flex'; }
 
 /* ── Templates ── */
@@ -352,6 +524,7 @@ const TYPE_ICON = { task:'⏰', chat:'💬', agent:'🤖' };
 let TPLS = [];
 async function loadTemplates(){
   const r = await fetch('/api/templates'); TPLS = await r.json();
+  const tc = $('tplCount'); if (tc) tc.textContent = TPLS.length + ' รายการ';
   const cats = [...new Set(TPLS.map(t=>t.cat))];
   $('tpllist').innerHTML = cats.map(c =>
     `<div class="tplcat">${c}</div><div class="cards">` +
@@ -457,6 +630,54 @@ loadRecents();
 </html>"""
 
 
+# ── Agent jobs (รันเบื้องหลัง + อนุมัติผ่านเว็บ) ─────────────────────────────
+JOBS: dict[str, dict] = {}
+JOBS_LOCK = threading.Lock()
+
+
+def start_agent_job(session_id: str | None, message: str) -> dict:
+    from . import tools
+    from .agent import run_agent
+
+    with JOBS_LOCK:
+        if any(j["status"] == "running" for j in JOBS.values()):
+            return {"error": "มี agent กำลังทำงานอยู่ รอให้เสร็จก่อนครับ"}
+        sid = session_id or history.new_session("🤖 " + message[:50], "agent")
+        job_id = "j-" + uuid.uuid4().hex[:8]
+        job = {"id": job_id, "session_id": sid, "status": "running", "steps": [],
+               "pending": None, "approved": None, "answer": "", "event": threading.Event()}
+        JOBS[job_id] = job
+
+    history.append(sid, "user", message)
+
+    def approval_handler(detail: dict) -> bool:
+        job["pending"] = detail
+        job["event"].clear()
+        job["event"].wait(timeout=300)  # รอการตัดสินใจจากหน้าเว็บสูงสุด 5 นาที
+        job["pending"] = None
+        return bool(job.get("approved"))
+
+    def on_event(kind: str, text: str):
+        job["steps"].append({"kind": kind, "text": text, "ts": time.time()})
+
+    def runner():
+        tools.WEB_APPROVAL = approval_handler
+        try:
+            answer = run_agent(message, on_event=on_event)
+            job["answer"] = answer or "(ไม่มีผลลัพธ์)"
+            history.append(sid, "assistant", job["answer"], model="agent")
+            job["status"] = "done"
+        except BaseException as e:  # รวม SystemExit จาก provider error
+            job["answer"] = f"⚠️ {e}"
+            history.append(sid, "assistant", job["answer"], model="agent")
+            job["status"] = "error"
+        finally:
+            tools.WEB_APPROVAL = None
+
+    threading.Thread(target=runner, daemon=True).start()
+    return {"job_id": job_id, "session_id": sid}
+
+
 # ── โครงหน้า Settings: หมวด → รายการ (key, ป้าย, คำอธิบาย, ลับไหม) ──────────
 CONFIG_SECTIONS = [
     ("API Keys", [
@@ -536,6 +757,17 @@ class Handler(BaseHTTPRequestHandler):
                              else "ตั้งเวลาเอง" if "at" in s else "")
                 out.append({**t, "sched_txt": sched_txt, "schedule": s})
             self._json(out)
+        elif self.path.startswith("/api/agent/status"):
+            from urllib.parse import parse_qs, urlparse
+            q = parse_qs(urlparse(self.path).query)
+            job = JOBS.get((q.get("id") or [""])[0])
+            if not job:
+                return self._json({"error": "job not found"}, 404)
+            self._json({"status": job["status"], "steps": job["steps"],
+                        "pending": job["pending"], "answer": job["answer"],
+                        "session_id": job["session_id"]})
+        elif self.path == "/api/tasks":
+            self._json(wk.load_tasks())
         elif self.path == "/api/sessions":
             self._json(history.list_sessions())
         elif self.path.startswith("/api/sessions/"):
@@ -548,10 +780,44 @@ class Handler(BaseHTTPRequestHandler):
         if self.path.startswith("/api/sessions/"):
             ok = history.delete(self.path.rsplit("/", 1)[1])
             self._json({"ok": ok})
+        elif self.path.startswith("/api/tasks/"):
+            ok = wk.remove_task(self.path.rsplit("/", 1)[1])
+            self._json({"ok": ok})
         else:
             self._json({"error": "not found"}, 404)
 
     def do_POST(self):
+        if self.path == "/api/agent":
+            try:
+                length = int(self.headers.get("Content-Length", 0))
+                req = json.loads(self.rfile.read(length))
+                out = start_agent_job(req.get("session_id"), (req.get("message") or "").strip())
+                return self._json(out)
+            except Exception as e:
+                return self._json({"error": str(e)})
+        if self.path == "/api/agent/approve":
+            try:
+                length = int(self.headers.get("Content-Length", 0))
+                req = json.loads(self.rfile.read(length))
+                job = JOBS.get(req.get("id", ""))
+                if not job:
+                    return self._json({"ok": False, "error": "job not found"})
+                job["approved"] = bool(req.get("approve"))
+                job["event"].set()
+                return self._json({"ok": True})
+            except Exception as e:
+                return self._json({"ok": False, "error": str(e)})
+        if self.path == "/api/tasks/run":
+            try:
+                length = int(self.headers.get("Content-Length", 0))
+                req = json.loads(self.rfile.read(length))
+                task = next((t for t in wk.load_tasks() if t["id"] == req.get("id")), None)
+                if not task:
+                    return self._json({"ok": False, "error": "ไม่พบงาน"})
+                threading.Thread(target=wk.run_task, args=(task,), daemon=True).start()
+                return self._json({"ok": True})
+            except Exception as e:
+                return self._json({"ok": False, "error": str(e)})
         if self.path == "/api/task":
             try:
                 length = int(self.headers.get("Content-Length", 0))

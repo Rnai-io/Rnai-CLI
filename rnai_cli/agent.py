@@ -23,7 +23,9 @@ Rules:
 
 
 def run_agent(task: str, planner_name: str | None = None,
-              voice: str | None = None, max_steps: int | None = None) -> str:
+              voice: str | None = None, max_steps: int | None = None,
+              on_event=None) -> str:
+    """on_event(kind, text) — รายงานความคืบหน้า (ใช้โดย Web UI): kind = tool | result | info"""
     cfg = config.load()
     planner = get_provider(planner_name or cfg["AGENT_PLANNER"])
     voice = voice if voice is not None else cfg["AGENT_VOICE"]
@@ -65,9 +67,13 @@ def run_agent(task: str, planner_name: str | None = None,
                 if len(arg_preview) > 120:
                     arg_preview = arg_preview[:120] + "…"
                 console.print(f"[cyan]step {step}[/cyan] 🔧 {name}({arg_preview})")
+                if on_event:
+                    on_event("tool", f"{name}({arg_preview})")
                 result = tools.execute(name, args)
                 preview = result[:200].replace("\n", " ")
                 console.print(f"[dim]   ↳ {preview}{'…' if len(result) > 200 else ''}[/dim]")
+                if on_event:
+                    on_event("result", preview[:160])
                 messages.append({
                     "role": "tool",
                     "tool_call_id": tc.get("id", name),
