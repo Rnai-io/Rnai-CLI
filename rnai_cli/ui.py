@@ -20,6 +20,7 @@ HTML = """<!DOCTYPE html>
 <meta charset="utf-8">
 <title>Rnai</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='116' fill='%230B3945'/%3E%3Cpath d='M196 196v160' stroke='%23fff' stroke-width='62' stroke-linecap='round'/%3E%3Cpath d='M196 300q0-104 110-104' stroke='%23fff' stroke-width='62' stroke-linecap='round' fill='none'/%3E%3Ccircle cx='382' cy='196' r='34' fill='%23D77757'/%3E%3C/svg%3E">
 <style>
 :root {
   --ink:#171717; --sub:#737373; --faint:#a3a3a3;
@@ -103,15 +104,68 @@ nav .grow { flex:1; }
 .typing::after { content:'●'; animation:blink 1s infinite; margin-left:2px; }
 @keyframes blink { 50% { opacity:.2 } }
 .err { color:#dc2626; }
+
+/* ── Settings ── */
+#settings { display:none; flex:1; overflow-y:auto; }
+#settings.show { display:block; }
+#setwrap { max-width:640px; margin:0 auto; padding:40px 24px 80px; }
+#setwrap h2 { font-size:22px; font-weight:700; letter-spacing:-.02em; margin-bottom:4px; }
+#setwrap .sub { color:var(--sub); font-size:14px; margin-bottom:28px; }
+.sethead { font-size:12px; font-weight:600; color:var(--faint); text-transform:uppercase;
+           letter-spacing:.06em; margin:28px 0 10px; }
+.setrow { border:1px solid var(--line); border-radius:var(--r); padding:14px 16px; margin-bottom:10px;
+          display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
+.setrow .info { flex:1; min-width:200px; }
+.setrow .name { font-size:14px; font-weight:600; display:flex; align-items:center; gap:8px; }
+.setrow .desc { font-size:12.5px; color:var(--sub); }
+.setrow .desc a { color:var(--accent); text-decoration:none; }
+.setrow input, .setrow select.val { border:1px solid var(--line); border-radius:8px; padding:8px 12px;
+             font-size:13px; width:230px; font-family:ui-monospace,monospace; }
+.setrow input:focus { outline:0; border-color:#c9c9c9; }
+.setrow .save { border:0; background:var(--ink); color:#fff; border-radius:8px;
+                padding:8px 16px; font-size:13px; font-weight:500; }
+.setrow .save:hover { background:#000; }
+.st { width:8px; height:8px; border-radius:50%; background:#d4d4d4; }
+.st.on { background:#22c55e; }
+.saved { color:#22c55e; font-size:12.5px; }
+
+/* ── Download ── */
+#download { display:none; flex:1; overflow-y:auto; }
+#download.show { display:block; }
+#dlwrap { max-width:560px; margin:0 auto; padding:56px 24px 80px; text-align:center; }
+#dlwrap h2 { font-size:26px; font-weight:700; letter-spacing:-.02em; margin:18px 0 26px; }
+.ostabs { display:flex; gap:6px; justify-content:center; margin-bottom:28px; }
+.ostab { border:0; background:transparent; border-radius:99px; padding:8px 20px;
+         font-size:14px; color:var(--sub); transition:.15s; }
+.ostab.on { background:var(--soft); color:var(--ink); font-weight:600; }
+.ostab:hover { color:var(--ink); }
+.codebox { position:relative; text-align:left; background:var(--soft); border:1px solid var(--line);
+           border-radius:12px; padding:18px 52px 18px 20px;
+           font:13.5px/1.6 ui-monospace,'SF Mono',Menlo,monospace; word-break:break-all; }
+.copybtn { position:absolute; right:10px; top:12px; border:1px solid var(--line); background:#fff;
+           border-radius:8px; padding:5px 10px; font-size:12px; color:var(--sub); }
+.copybtn:hover { color:var(--ink); border-color:#d4d4d4; }
+.dlcaption { color:var(--faint); font-size:13px; margin:12px 0 26px; }
+.dlor { color:var(--faint); font-size:13px; margin:2px 0 14px; }
+.dlbtn { display:inline-block; background:var(--ink); color:#fff; text-decoration:none;
+         border-radius:99px; padding:12px 28px; font-size:14.5px; font-weight:600; transition:.15s; }
+.dlbtn:hover { background:#000; }
+.dlnote { margin-top:34px; font-size:12.5px; color:var(--faint); line-height:1.8; }
+.dlnote code { background:var(--soft); padding:2px 7px; border-radius:6px;
+               font:12px ui-monospace,monospace; color:#404040; }
 @media (max-width:760px){ #side{display:none} }
 </style>
 </head>
 <body>
 <nav>
-  <div class="brand"><span class="dot"></span>Rnai</div>
-  <a href="#" onclick="newChat();return false">Chat</a>
+  <div class="brand">
+    <svg width="26" height="26" viewBox="0 0 512 512"><rect width="512" height="512" rx="116" fill="#0B3945"/><path d="M196 196v160" stroke="#fff" stroke-width="62" stroke-linecap="round"/><path d="M196 300q0-104 110-104" stroke="#fff" stroke-width="62" stroke-linecap="round" fill="none"/><circle cx="382" cy="196" r="34" fill="#D77757"/></svg>
+    Rnai
+  </div>
+  <a href="#" onclick="showChat();return false">Chat</a>
+  <a href="#" onclick="showSettings();return false">Settings</a>
+  <a href="#" onclick="showDownload();return false">Download</a>
   <a href="https://rnai-io.vercel.app" target="_blank">Rnai.io</a>
-  <a href="https://github.com/Rnai-io/Rnai-CLI" target="_blank">GitHub</a>
   <div class="grow"></div>
   <select id="model">
     <option value="rnai">rnai-llm v3.2</option>
@@ -129,7 +183,7 @@ nav .grow { flex:1; }
   <div id="main">
     <div id="chat"><div id="thread">
       <div id="empty">
-        <div class="mark">R</div>
+        <svg width="56" height="56" viewBox="0 0 512 512" style="margin-bottom:16px"><rect width="512" height="512" rx="116" fill="#0B3945"/><path d="M196 196v160" stroke="#fff" stroke-width="62" stroke-linecap="round"/><path d="M196 300q0-104 110-104" stroke="#fff" stroke-width="62" stroke-linecap="round" fill="none"/><circle cx="382" cy="196" r="34" fill="#D77757"/></svg>
         <h2>คุยกับ Rnai ได้เลย</h2>
         <p>โมเดลของคุณเอง รันบนเครื่อง ประวัติเก็บในเครื่อง</p>
         <div class="chips">
@@ -149,6 +203,30 @@ nav .grow { flex:1; }
       <div id="hint">Enter ส่ง · Shift+Enter ขึ้นบรรทัดใหม่ · ประวัติอยู่ที่ ~/.rnai/history</div>
     </div>
   </div>
+  <div id="settings"><div id="setwrap">
+    <h2>Settings</h2>
+    <div class="sub">API keys และการตั้งค่า — บันทึกที่ ~/.rnai/config.json บนเครื่องคุณเท่านั้น</div>
+    <div id="setlist"></div>
+  </div></div>
+  <div id="download"><div id="dlwrap">
+    <svg width="64" height="64" viewBox="0 0 512 512"><rect width="512" height="512" rx="116" fill="#0B3945"/><path d="M196 196v160" stroke="#fff" stroke-width="62" stroke-linecap="round"/><path d="M196 300q0-104 110-104" stroke="#fff" stroke-width="62" stroke-linecap="round" fill="none"/><circle cx="382" cy="196" r="34" fill="#D77757"/></svg>
+    <h2>Download Rnai-CLI</h2>
+    <div class="ostabs">
+      <button class="ostab on" id="os-mac" onclick="setOS('mac')">macOS</button>
+      <button class="ostab" id="os-linux" onclick="setOS('linux')">Linux</button>
+      <button class="ostab" id="os-win" onclick="setOS('win')">Windows</button>
+    </div>
+    <div class="codebox"><span id="dlcmd">curl -fsSL https://raw.githubusercontent.com/Rnai-io/Rnai-CLI/main/install.sh | sh</span>
+      <button class="copybtn" onclick="copyCmd(this)">Copy</button>
+    </div>
+    <div class="dlcaption" id="dlcap">วางคำสั่งนี้ใน Terminal</div>
+    <div class="dlor">หรือ</div>
+    <a class="dlbtn" href="https://github.com/Rnai-io/Rnai-CLI/archive/refs/heads/main.zip">Download Source (.zip)</a>
+    <div class="dlnote">
+      ต้องมี Python 3.9+ ในเครื่อง · ติดตั้งแล้วเริ่มที่ <code>rnai --help</code><br>
+      เปิดหน้าจอนี้ได้ทุกเมื่อด้วย <code>rnai ui</code> · ตั้งค่า API keys ที่แท็บ Settings
+    </div>
+  </div></div>
 </div>
 <script>
 let sid = null;
@@ -219,10 +297,110 @@ function autosize(){ input.style.height='auto'; input.style.height = Math.min(in
 input.addEventListener('input', autosize);
 input.addEventListener('keydown', e => {
   if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } });
+
+/* ── Views: chat / settings / download ── */
+function hideAll(){ $('main').style.display='none'; $('side').style.display='none';
+  $('settings').classList.remove('show'); $('download').classList.remove('show'); }
+function showSettings(){ hideAll(); $('settings').classList.add('show'); loadConfig(); }
+function showDownload(){ hideAll(); $('download').classList.add('show'); }
+function showChat(){ hideAll(); $('main').style.display='flex'; $('side').style.display='flex'; }
+
+const DL = {
+  mac:   { cmd:'curl -fsSL https://raw.githubusercontent.com/Rnai-io/Rnai-CLI/main/install.sh | sh', cap:'วางคำสั่งนี้ใน Terminal' },
+  linux: { cmd:'curl -fsSL https://raw.githubusercontent.com/Rnai-io/Rnai-CLI/main/install.sh | sh', cap:'วางคำสั่งนี้ใน Terminal' },
+  win:   { cmd:'pip install git+https://github.com/Rnai-io/Rnai-CLI.git', cap:'วางคำสั่งนี้ใน PowerShell (ต้องมี Python + Git)' },
+};
+function setOS(os){
+  for (const k of ['mac','linux','win']) $('os-'+k).classList.toggle('on', k===os);
+  $('dlcmd').textContent = DL[os].cmd; $('dlcap').textContent = DL[os].cap;
+}
+function copyCmd(btn){
+  navigator.clipboard.writeText($('dlcmd').textContent).then(()=>{
+    btn.textContent='Copied ✓'; setTimeout(()=>btn.textContent='Copy', 1500); });
+}
+async function loadConfig(){
+  const r = await fetch('/api/config'); const d = await r.json();
+  let html = '';
+  for (const sec of d.sections) {
+    html += `<div class="sethead">${sec.title}</div>`;
+    for (const it of sec.items) {
+      const secret = it.secret;
+      html += `<div class="setrow">
+        <div class="info">
+          <div class="name"><span class="st ${it.set?'on':''}"></span>${it.label}</div>
+          <div class="desc">${it.desc}</div>
+        </div>
+        <input id="in-${it.key}" type="${secret?'password':'text'}"
+               placeholder="${it.set ? (secret ? it.masked : it.value) : (it.placeholder||'ยังไม่ได้ตั้งค่า')}">
+        <button class="save" onclick="saveKey('${it.key}')">บันทึก</button>
+        <span id="ok-${it.key}"></span>
+      </div>`;
+    }
+  }
+  $('setlist').innerHTML = html;
+}
+async function saveKey(key){
+  const v = $('in-'+key).value.trim();
+  if (!v) return;
+  const r = await fetch('/api/config', { method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ key, value: v }) });
+  const d = await r.json();
+  if (d.ok) { $('ok-'+key).className='saved'; $('ok-'+key).textContent='✓ บันทึกแล้ว';
+    setTimeout(loadConfig, 900); }
+  else { $('ok-'+key).className='err'; $('ok-'+key).textContent=d.error||'ผิดพลาด'; }
+}
 loadRecents();
 </script>
 </body>
 </html>"""
+
+
+# ── โครงหน้า Settings: หมวด → รายการ (key, ป้าย, คำอธิบาย, ลับไหม) ──────────
+CONFIG_SECTIONS = [
+    ("API Keys", [
+        ("GROQ_API_KEY", "Groq", 'ฟรีที่ <a href="https://console.groq.com" target="_blank">console.groq.com</a> — โมเดลเร็ว + ตัวเลือก planner', True, "gsk_..."),
+        ("GEMINI_API_KEY", "Gemini", 'ฟรีที่ <a href="https://aistudio.google.com" target="_blank">aistudio.google.com</a> — planner หลักของ agent', True, "AIza..."),
+        ("OPENROUTER_API_KEY", "OpenRouter", 'ฟรีที่ <a href="https://openrouter.ai/keys" target="_blank">openrouter.ai/keys</a> — โมเดลฟรีหลายสิบตัว', True, "sk-or-..."),
+        ("CEREBRAS_API_KEY", "Cerebras", 'ที่ <a href="https://cloud.cerebras.ai" target="_blank">cloud.cerebras.ai</a>', True, "csk-..."),
+        ("MISTRAL_API_KEY", "Mistral", 'ที่ <a href="https://console.mistral.ai" target="_blank">console.mistral.ai</a>', True, ""),
+        ("GITHUB_API_KEY", "GitHub Models", 'ใช้ GitHub PAT จาก <a href="https://github.com/settings/tokens" target="_blank">settings/tokens</a>', True, "ghp_..."),
+        ("TAVILY_API_KEY", "Tavily (Web Search)", 'ฟรี 1,000 ครั้ง/เดือนที่ <a href="https://tavily.com" target="_blank">tavily.com</a> — ให้ agent ค้นเว็บ', True, "tvly-..."),
+        ("RNAI_IO_API_KEY", "Rnai.io Skills", 'สร้างจากหน้าโปรไฟล์ <a href="https://rnai-io.vercel.app" target="_blank">Rnai.io</a> — ให้ agent เรียก skills', True, "rnai_sk_..."),
+    ]),
+    ("Agent", [
+        ("AGENT_PLANNER", "Planner (สมองวางแผน)", "gemini | groq — ตัวที่คิดและเรียก tools", False, "gemini"),
+        ("AGENT_VOICE", "Voice (เสียงตอบ)", "rnai = เรียบเรียงคำตอบด้วย rnai-llm | none = ปิด", False, "rnai"),
+        ("AGENT_MAX_STEPS", "Max steps", "จำนวนขั้นสูงสุดต่อการสั่งงานหนึ่งครั้ง", False, "10"),
+    ]),
+    ("Models", [
+        ("GEMINI_MODEL", "Gemini model", "", False, "gemini-2.5-flash"),
+        ("GROQ_MODEL", "Groq model", "", False, "llama-3.3-70b-versatile"),
+        ("OPENROUTER_MODEL", "OpenRouter model", "openrouter/free = เลือกโมเดลฟรีอัตโนมัติ", False, "openrouter/free"),
+        ("CEREBRAS_MODEL", "Cerebras model", "", False, "gpt-oss-120b"),
+    ]),
+]
+ALLOWED_KEYS = {k for _, items in CONFIG_SECTIONS for k, *_ in items}
+
+
+def _mask(v: str) -> str:
+    return (v[:5] + "…" + v[-4:]) if len(v) > 12 else "•••"
+
+
+def config_payload() -> dict:
+    cfg = config.load()
+    sections = []
+    for title, items in CONFIG_SECTIONS:
+        rows = []
+        for key, label, desc, secret, placeholder in items:
+            val = cfg.get(key, "")
+            rows.append({
+                "key": key, "label": label, "desc": desc, "secret": secret,
+                "set": bool(val), "placeholder": placeholder,
+                "masked": _mask(val) if (secret and val) else "",
+                "value": "" if secret else val,
+            })
+        sections.append({"title": title, "items": rows})
+    return {"sections": sections}
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -245,6 +423,8 @@ class Handler(BaseHTTPRequestHandler):
             self.send_header("Content-Length", str(len(body)))
             self.end_headers()
             self.wfile.write(body)
+        elif self.path == "/api/config":
+            self._json(config_payload())
         elif self.path == "/api/sessions":
             self._json(history.list_sessions())
         elif self.path.startswith("/api/sessions/"):
@@ -261,6 +441,17 @@ class Handler(BaseHTTPRequestHandler):
             self._json({"error": "not found"}, 404)
 
     def do_POST(self):
+        if self.path == "/api/config":
+            try:
+                length = int(self.headers.get("Content-Length", 0))
+                req = json.loads(self.rfile.read(length))
+                key, value = req.get("key", ""), (req.get("value") or "").strip()
+                if key not in ALLOWED_KEYS:
+                    return self._json({"ok": False, "error": "key ไม่ถูกต้อง"})
+                config.set_value(key, value)
+                return self._json({"ok": True})
+            except Exception as e:
+                return self._json({"ok": False, "error": str(e)})
         if self.path != "/api/chat":
             return self._json({"error": "not found"}, 404)
         try:
