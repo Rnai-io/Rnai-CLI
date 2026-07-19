@@ -1,2 +1,0 @@
-[console_scripts]
-rnai = rnai_cli.main:app
