@@ -1,0 +1,20 @@
+[project]
+name = "rnai-cli"
+version = "0.1.0"
+description = "Rnai-CLI — AI agent CLI for the Rnai.io ecosystem (chat, compare, agent with tools)"
+requires-python = ">=3.9"
+dependencies = [
+    "typer>=0.12",
+    "rich>=13.0",
+    "httpx>=0.27",
+]
+
+[project.scripts]
+rnai = "rnai_cli.main:app"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["rnai_cli*"]
