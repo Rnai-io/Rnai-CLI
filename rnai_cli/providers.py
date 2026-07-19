@@ -61,25 +61,34 @@ class Provider:
         return r.json().get("data", [])
 
 
+# provider name -> (ต้องมี key ไหม, ที่สมัคร key)
+PROVIDER_INFO = {
+    "rnai":       (False, ""),
+    "ollama":     (False, "ติดตั้ง ollama.com แล้วรัน: ollama create rnai -f Modelfile"),
+    "gemini":     (True, "aistudio.google.com"),
+    "groq":       (True, "console.groq.com"),
+    "openrouter": (True, "openrouter.ai/keys"),
+    "cerebras":   (True, "cloud.cerebras.ai"),
+    "mistral":    (True, "console.mistral.ai"),
+    "github":     (True, "github.com/settings/tokens (PAT ธรรมดาก็ใช้ได้)"),
+}
+
+
 def get_provider(name: str) -> Provider:
-    """สร้าง provider จาก config: rnai | gemini | groq หรือ 'groq/model-id'"""
+    """สร้าง provider จาก config เช่น 'groq' หรือ 'openrouter/qwen/qwen3-32b:free'"""
     cfg = config.load()
     model_override = None
     if "/" in name:
         name, model_override = name.split("/", 1)
     name = name.lower()
-    if name == "rnai":
-        p = Provider("rnai", cfg["RNAI_BASE_URL"], "", cfg["RNAI_MODEL"])
-    elif name == "gemini":
-        if not cfg["GEMINI_API_KEY"]:
-            raise SystemExit("ยังไม่ได้ตั้ง GEMINI_API_KEY — รัน: rnai config set GEMINI_API_KEY <key>")
-        p = Provider("gemini", cfg["GEMINI_BASE_URL"], cfg["GEMINI_API_KEY"], cfg["GEMINI_MODEL"])
-    elif name == "groq":
-        if not cfg["GROQ_API_KEY"]:
-            raise SystemExit("ยังไม่ได้ตั้ง GROQ_API_KEY — รัน: rnai config set GROQ_API_KEY <key> (ฟรีที่ console.groq.com)")
-        p = Provider("groq", cfg["GROQ_BASE_URL"], cfg["GROQ_API_KEY"], cfg["GROQ_MODEL"])
-    else:
-        raise SystemExit(f"ไม่รู้จัก provider '{name}' (ใช้ได้: rnai, gemini, groq)")
+    if name not in PROVIDER_INFO:
+        raise SystemExit(f"ไม่รู้จัก provider '{name}' (ใช้ได้: {', '.join(PROVIDER_INFO)})")
+    needs_key, where = PROVIDER_INFO[name]
+    up = name.upper()
+    key = cfg.get(f"{up}_API_KEY", "")
+    if needs_key and not key:
+        raise SystemExit(f"ยังไม่ได้ตั้ง {up}_API_KEY — รัน: rnai config set {up}_API_KEY <key> (สมัครฟรีที่ {where})")
+    p = Provider(name, cfg[f"{up}_BASE_URL"], key, cfg[f"{up}_MODEL"])
     if model_override:
         p.model = model_override
     return p

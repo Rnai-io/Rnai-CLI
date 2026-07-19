@@ -22,6 +22,21 @@ DEFAULTS = {
     "GROQ_API_KEY": "",
     "GROQ_BASE_URL": "https://api.groq.com/openai/v1",
     "GROQ_MODEL": "llama-3.3-70b-versatile",
+    "OPENROUTER_API_KEY": "",
+    "OPENROUTER_BASE_URL": "https://openrouter.ai/api/v1",
+    # "openrouter/free" = auto-router ของ OpenRouter เอง เลือกโมเดลฟรีที่เปิดอยู่ให้อัตโนมัติ
+    "OPENROUTER_MODEL": "openrouter/free",
+    "CEREBRAS_API_KEY": "",
+    "CEREBRAS_BASE_URL": "https://api.cerebras.ai/v1",
+    "CEREBRAS_MODEL": "gpt-oss-120b",
+    "MISTRAL_API_KEY": "",
+    "MISTRAL_BASE_URL": "https://api.mistral.ai/v1",
+    "MISTRAL_MODEL": "mistral-small-latest",
+    "GITHUB_API_KEY": "",
+    "GITHUB_BASE_URL": "https://models.github.ai/inference",
+    "GITHUB_MODEL": "openai/gpt-4o-mini",
+    "OLLAMA_BASE_URL": "http://localhost:11434/v1",
+    "OLLAMA_MODEL": "rnai",
     # Web search
     "TAVILY_API_KEY": "",
     # Rnai.io backend (สำหรับ tool เรียก skills)

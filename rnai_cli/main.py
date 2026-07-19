@@ -77,6 +77,8 @@ def status():
 
     # Keys
     for key, label in [("GEMINI_API_KEY", "Gemini"), ("GROQ_API_KEY", "Groq"),
+                       ("OPENROUTER_API_KEY", "OpenRouter"), ("CEREBRAS_API_KEY", "Cerebras"),
+                       ("MISTRAL_API_KEY", "Mistral"), ("GITHUB_API_KEY", "GitHub Models"),
                        ("TAVILY_API_KEY", "Tavily search"), ("RNAI_IO_API_KEY", "Rnai.io skills")]:
         table.add_row(label, "🟢 set" if cfg.get(key) else "⚪ not set",
                       "" if cfg.get(key) else f"rnai config set {key} <key>")
