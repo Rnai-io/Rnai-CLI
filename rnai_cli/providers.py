@@ -36,7 +36,11 @@ class Provider:
         r = httpx.post(f"{self.base_url}/chat/completions",
                        json=payload, headers=headers, timeout=timeout,
                        follow_redirects=True)
-        r.raise_for_status()
+        if r.status_code >= 400:
+            raise SystemExit(
+                f"[{self.name}] HTTP {r.status_code} จาก {self.base_url}\n"
+                f"รายละเอียด: {r.text[:600]}"
+            )
         data = r.json()
         msg = data["choices"][0]["message"]
         return {

@@ -38,7 +38,19 @@ def run_agent(task: str, planner_name: str | None = None,
 
     final_answer = ""
     for step in range(1, max_steps + 1):
-        resp = planner.chat(messages, tools=tools.TOOL_SCHEMAS, max_tokens=2048)
+        resp = None
+        for attempt in range(3):
+            try:
+                resp = planner.chat(messages, tools=tools.TOOL_SCHEMAS, max_tokens=2048)
+                break
+            except SystemExit as e:
+                # llama บน Groq ชอบเขียน tool call ผิดฟอร์แมตเป็นครั้งคราว — ลองใหม่ได้
+                if "tool_use_failed" in str(e) and attempt < 2:
+                    console.print(f"[dim]⚠️ planner เรียก tool ผิดฟอร์แมต (ครั้งที่ {attempt+1}) — ลองใหม่...[/dim]")
+                    continue
+                raise
+        if resp is None:
+            break
 
         if resp["tool_calls"]:
             # เก็บ assistant message (พร้อม tool_calls) เข้า history

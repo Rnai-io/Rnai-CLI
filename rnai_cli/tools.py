@@ -75,8 +75,10 @@ def web_search(query: str) -> str:
         return "ERROR: TAVILY_API_KEY not set. Tell the user to run: rnai config set TAVILY_API_KEY <key> (free at tavily.com)"
     try:
         r = httpx.post("https://api.tavily.com/search",
-                       json={"api_key": key, "query": query, "max_results": 5,
+                       json={"query": query, "max_results": 5,
                              "include_answer": True},
+                       headers={"Authorization": f"Bearer {key}",
+                                "Content-Type": "application/json"},
                        timeout=30)
         r.raise_for_status()
         data = r.json()
