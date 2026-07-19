@@ -47,7 +47,7 @@ html[data-theme="dark"] {
 }
 * { box-sizing:border-box; margin:0; padding:0; }
 html,body { height:100%; }
-body { font:15px/1.7 -apple-system,BlinkMacSystemFont,'Inter','Sarabun',sans-serif;
+body { font:15px/1.7 -apple-system,BlinkMacSystemFont,'Inter','Noto Sans Thai',sans-serif;
        color:var(--ink); background:var(--page); display:flex; flex-direction:column; }
 button { font:inherit; cursor:pointer; color:inherit; }
 input, textarea, select { color:var(--ink); }
