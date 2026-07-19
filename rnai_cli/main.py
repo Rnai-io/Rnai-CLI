@@ -20,6 +20,8 @@ from .providers import get_provider, rnai_messages
 app = typer.Typer(help="Rnai-CLI — AI agent สำหรับระบบ Rnai.io", no_args_is_help=True)
 config_app = typer.Typer(help="จัดการ config (~/.rnai/config.json)")
 app.add_typer(config_app, name="config")
+task_app = typer.Typer(help="คิวงานของ Worker — สั่งงานทิ้งไว้ให้รันตามเวลา", no_args_is_help=True)
+app.add_typer(task_app, name="task")
 console = Console()
 
 
@@ -181,6 +183,151 @@ def show_history(limit: int = typer.Option(20, "--limit", "-n")):
         table.add_row(when, s["title"], s["model"], str(s["count"]))
     console.print(table)
     console.print("[dim]เปิดดูเต็มๆ ใน Web UI: rnai ui[/dim]")
+
+
+# ── worker / task ───────────────────────────────────────────────────────────
+@app.command()
+def worker(
+    install: bool = typer.Option(False, "--install", help="ติดตั้งเป็น daemon เบื้องหลังถาวร (macOS launchd)"),
+    uninstall: bool = typer.Option(False, "--uninstall", help="ถอน daemon"),
+    interval: int = typer.Option(30, "--interval", help="วินาทีต่อการเช็คคิว"),
+):
+    """รัน Worker — ทำงานในคิวตามเวลาที่ตั้งไว้ (Phase 2)"""
+    from . import worker as w
+    if install:
+        w.install_daemon()
+    elif uninstall:
+        w.uninstall_daemon()
+    else:
+        w.worker_loop(interval)
+
+
+@task_app.command("add")
+def task_add(
+    prompt: str = typer.Argument(..., help="งานที่ให้ agent ทำ"),
+    daily: Optional[str] = typer.Option(None, "--daily", help="รันทุกวันเวลานี้ เช่น 08:00"),
+    every: Optional[int] = typer.Option(None, "--every", help="รันทุก N นาที"),
+    at: Optional[str] = typer.Option(None, "--at", help='รันครั้งเดียวเวลานี้ เช่น "2026-07-20 15:00"'),
+):
+    """เพิ่มงานเข้าคิว เช่น: rnai task add "สรุปข่าว AI เก็บเป็นไฟล์" --daily 08:00"""
+    from . import worker as w
+    t = w.add_task(prompt, daily=daily, every=every, at=at)
+    console.print(f"[green]✓ เพิ่มงาน {t['id']}[/green] — {w.describe_schedule(t['schedule'])}")
+    console.print("[dim]อย่าลืมให้ Worker ทำงานอยู่: rnai worker (หรือติดตั้งถาวร: rnai worker --install)[/dim]")
+
+
+@task_app.command("list")
+def task_list():
+    """ดูงานทั้งหมดในคิว"""
+    import datetime
+    from . import worker as w
+    tasks = w.load_tasks()
+    if not tasks:
+        console.print("[dim]คิวว่าง — เพิ่มงาน: rnai task add \"...\" --daily 08:00[/dim]")
+        return
+    table = Table(title=f"Worker Tasks ({len(tasks)})")
+    table.add_column("id", style="cyan")
+    table.add_column("งาน", overflow="fold", max_width=44)
+    table.add_column("กำหนดการ")
+    table.add_column("รันล่าสุด")
+    table.add_column("สถานะ")
+    table.add_column("ครั้ง", justify="right")
+    for t in tasks:
+        last = (datetime.datetime.fromtimestamp(t["last_run"]).strftime("%d/%m %H:%M")
+                if t.get("last_run") else "-")
+        icon = {"ok": "🟢 ok", "error": "🔴 error", "running": "🟡 running"}.get(t["last_status"], "⚪ รอ")
+        table.add_row(t["id"], t["prompt"], w.describe_schedule(t["schedule"]), last, icon, str(t.get("runs", 0)))
+    console.print(table)
+
+
+@task_app.command("remove")
+def task_remove(task_id: str):
+    """ลบงานออกจากคิว"""
+    from . import worker as w
+    if w.remove_task(task_id):
+        console.print(f"[green]✓ ลบ {task_id} แล้ว[/green]")
+    else:
+        console.print(f"[red]ไม่พบงาน {task_id}[/red]")
+
+
+@task_app.command("run")
+def task_run(task_id: str):
+    """รันงานทันทีโดยไม่รอเวลา"""
+    from . import worker as w
+    t = next((t for t in w.load_tasks() if t["id"] == task_id), None)
+    if not t:
+        console.print(f"[red]ไม่พบงาน {task_id}[/red]")
+        raise typer.Exit(1)
+    w.run_task(t)
+
+
+# ── templates ───────────────────────────────────────────────────────────────
+@app.command("templates")
+def templates_cmd(
+    use: Optional[str] = typer.Option(None, "--use", "-u", help="ใช้ template ตาม id เช่น -u news-ai"),
+    cat: Optional[str] = typer.Option(None, "--cat", help="กรองตามหมวด"),
+):
+    """คลังงานสำเร็จรูป — ดูทั้งหมด หรือใช้เลย: rnai templates -u news-ai"""
+    from . import templates as tpl
+
+    if not use:
+        table = Table(title=f"คลัง Templates ({len(tpl.TEMPLATES)})")
+        table.add_column("id", style="cyan")
+        table.add_column("หมวด", style="dim")
+        table.add_column("ชื่อ")
+        table.add_column("ชนิด")
+        table.add_column("กำหนดการ", style="dim")
+        type_icon = {"task": "⏰ task", "agent": "🤖 agent", "chat": "💬 chat"}
+        for t in tpl.TEMPLATES:
+            if cat and cat not in t["cat"]:
+                continue
+            sched = t.get("schedule", {})
+            sched_txt = (f"ทุกวัน {sched['daily']}" if "daily" in sched
+                         else f"ทุก {sched['every']} นาที" if "every" in sched
+                         else "ตั้งเวลาเอง" if "at" in sched else "-")
+            table.add_row(t["id"], t["cat"], t["title"], type_icon[t["type"]], sched_txt)
+        console.print(table)
+        console.print("[dim]ใช้งาน: rnai templates -u <id>  — ระบบจะถามค่าที่ต้องเติมแล้วจัดการให้ครบ[/dim]")
+        return
+
+    t = tpl.get(use)
+    if not t:
+        console.print(f"[red]ไม่พบ template '{use}'[/red] — ดูทั้งหมด: rnai templates")
+        raise typer.Exit(1)
+
+    console.print(Panel(t["prompt"], title=f"📋 {t['title']} ({t['type']})", border_style="cyan"))
+    prompt = tpl.fill_placeholders(t["prompt"], lambda var: typer.prompt(f"  {var}"))
+
+    if t["type"] == "chat":
+        p = get_provider("rnai")
+        with console.status("[cyan]Rnai กำลังคิด...[/cyan]"):
+            resp = p.chat(rnai_messages(prompt), max_tokens=1500, timeout=200)
+        console.print(Markdown(resp["content"]))
+        from . import history as hist
+        sid = hist.new_session(t["title"], "rnai")
+        hist.append(sid, "user", prompt)
+        hist.append(sid, "assistant", resp["content"], model="rnai")
+    elif t["type"] == "agent":
+        from .agent import run_agent
+        answer = run_agent(prompt)
+        console.print(Panel(Markdown(answer or "(ไม่มีคำตอบ)"), title="✅ ผลลัพธ์", border_style="green"))
+    else:  # task
+        from . import worker as w
+        sched = t.get("schedule", {})
+        daily = sched.get("daily")
+        every = sched.get("every")
+        at = sched.get("at")
+        if daily:
+            daily = typer.prompt("  รันทุกวันเวลา (HH:MM)", default=daily)
+            task = w.add_task(prompt, daily=daily)
+        elif every:
+            every = int(typer.prompt("  รันทุกกี่นาที", default=str(every)))
+            task = w.add_task(prompt, every=every)
+        else:
+            at_val = typer.prompt("  รันเมื่อ (YYYY-MM-DD HH:MM)")
+            task = w.add_task(prompt, at=at_val)
+        console.print(f"[green]✓ เพิ่มงาน {task['id']}[/green] — {w.describe_schedule(task['schedule'])}")
+        console.print("[dim]Worker ต้องทำงานอยู่: rnai worker --install (ครั้งเดียว)[/dim]")
 
 
 # ── config ──────────────────────────────────────────────────────────────────

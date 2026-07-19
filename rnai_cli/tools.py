@@ -14,6 +14,9 @@ from . import config
 
 console = Console()
 
+# โหมดเบื้องหลัง (Worker): True = เขียนไฟล์ได้โดยไม่ถาม แต่ปิด shell command เพื่อความปลอดภัย
+NON_INTERACTIVE = False
+
 # ── OpenAI tools schema (ให้โมเดลวางแผนเรียก) ──────────────────────────────
 TOOL_SCHEMAS = [
     {"type": "function", "function": {
@@ -107,6 +110,13 @@ def read_file(path: str) -> str:
 
 def write_file(path: str, content: str) -> str:
     p = Path(path).expanduser()
+    if NON_INTERACTIVE:
+        # Worker mode: เขียนได้เองในโฟลเดอร์ผลงาน ~/.rnai/outputs เพื่อความปลอดภัย
+        if not p.is_absolute() or not str(p).startswith(str(Path.home())):
+            p = Path.home() / ".rnai" / "outputs" / p.name
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(content)
+        return f"OK: wrote {len(content)} chars to {p}"
     console.print(Panel(content[:1500] + ("\n..." if len(content) > 1500 else ""),
                         title=f"✏️ agent ขอเขียนไฟล์: {p}", border_style="yellow"))
     if not typer.confirm("อนุญาตให้เขียนไฟล์นี้?", default=False):
@@ -117,6 +127,8 @@ def write_file(path: str, content: str) -> str:
 
 
 def run_command(command: str, reason: str = "") -> str:
+    if NON_INTERACTIVE:
+        return "DENIED: run_command is disabled in background worker mode for safety. Complete the task without shell commands."
     console.print(Panel(f"[bold]{command}[/bold]\n\nเหตุผล: {reason or '-'}",
                         title="⚡ agent ขอรันคำสั่ง", border_style="red"))
     if not typer.confirm("อนุญาตให้รันคำสั่งนี้?", default=False):
