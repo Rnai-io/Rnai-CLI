@@ -148,6 +148,19 @@ nav .grow { flex:1; }
 .fd-save { background:var(--btn-bg); color:var(--btn-fg); }
 .fd-cancel { background:transparent; color:var(--sub); }
 #fdmsg { font-size:12.5px; margin-top:10px; }
+/* account dialog (Rnai.io login/เครดิต) */
+#accountdlg { position:fixed; inset:0; background:rgba(0,0,0,.28); display:none; align-items:center;
+              justify-content:center; z-index:50; }
+#accountdlg.show { display:flex; }
+.fdcard input#acEmail, .fdcard input#acPassword { margin-top:8px; }
+#acctBtn { border:1px solid var(--line); background:var(--card); border-radius:99px; padding:6px 14px;
+           font-size:12.5px; font-weight:600; color:var(--ink2); cursor:pointer; white-space:nowrap; }
+#acctBtn:hover { border-color:var(--faint); background:var(--hover); }
+#acctBtn.linked { color:var(--brand-ink, #0B3945); }
+.acct-credits { font-size:13px; color:var(--ink2); margin:14px 0; padding:12px 14px; background:var(--soft);
+                border-radius:10px; }
+.acct-credits b { color:var(--ink); }
+#acmsg { font-size:12.5px; margin-top:10px; }
 #chat { flex:1; overflow-y:auto; }
 #thread { max-width:720px; margin:0 auto; padding:32px 24px 8px; }
 .turn { margin-bottom:26px; }
@@ -338,6 +351,7 @@ nav .grow { flex:1; }
   <a href="#" onclick="showDownload();return false">Download</a>
   <a href="https://rnai-io.vercel.app" target="_blank">Rnai.io</a>
   <div class="grow"></div>
+  <button id="acctBtn" onclick="openAccount()" title="บัญชี Rnai.io — เข้าสู่ระบบเพื่อดูเครดิต">🔌 Rnai.io</button>
   <button id="themebtn" onclick="toggleTheme()" title="สลับโหมดสว่าง/มืด">🌙</button>
   <select id="model">
     <option value="rnai">rnai-llm v3.2</option>
@@ -455,6 +469,28 @@ nav .grow { flex:1; }
     <div class="actions">
       <button class="fd-cancel" onclick="$('folderdlg').classList.remove('show')">ยกเลิก</button>
       <button class="fd-save" onclick="saveFolder()">ใช้โฟลเดอร์นี้</button>
+    </div>
+  </div>
+</div>
+<div id="accountdlg">
+  <div class="fdcard" id="acLoginCard">
+    <h3>🔌 เชื่อมต่อบัญชี Rnai.io</h3>
+    <p>เข้าสู่ระบบเพื่อดูเครดิตคงเหลือ และให้ agent เรียก skills ผ่านเครดิตของคุณ — ระบบจะสร้าง API key ให้อัตโนมัติ ไม่ต้องเข้าเว็บไปสร้างเอง</p>
+    <input id="acEmail" type="email" placeholder="อีเมล Rnai.io" autocomplete="email">
+    <input id="acPassword" type="password" placeholder="รหัสผ่าน" autocomplete="current-password">
+    <div id="acmsg"></div>
+    <div class="actions">
+      <button class="fd-cancel" onclick="$('accountdlg').classList.remove('show')">ยกเลิก</button>
+      <button class="fd-save" id="acLoginBtn" onclick="doLogin()">เข้าสู่ระบบ</button>
+    </div>
+  </div>
+  <div class="fdcard" id="acAccountCard" style="display:none">
+    <h3>🔌 บัญชี Rnai.io</h3>
+    <p id="acEmailLabel"></p>
+    <div class="acct-credits" id="acCreditsBox">กำลังโหลดเครดิต...</div>
+    <div class="actions">
+      <button class="fd-cancel" onclick="$('accountdlg').classList.remove('show')">ปิด</button>
+      <button class="fd-save" onclick="doLogout()">ออกจากระบบ</button>
     </div>
   </div>
 </div>
@@ -720,6 +756,62 @@ async function saveFolder(){
   else { $('fdmsg').innerHTML = '<span class="err">'+esc(d.error)+'</span>'; }
 }
 
+/* ── Rnai.io account (login / เครดิต) ── */
+async function loadAccount(){
+  const d = await (await fetch('/api/rnai/account')).json();
+  const btn = $('acctBtn');
+  if (d.loggedIn) {
+    const total = d.credits ? d.credits.total : null;
+    btn.textContent = total === null ? '🔌 ' + d.email : '💳 ' + total.toLocaleString();
+    btn.classList.add('linked');
+    btn.title = 'เข้าสู่ระบบแล้ว: ' + d.email;
+  } else {
+    btn.textContent = '🔌 Rnai.io';
+    btn.classList.remove('linked');
+    btn.title = 'บัญชี Rnai.io — เข้าสู่ระบบเพื่อดูเครดิต';
+  }
+  return d;
+}
+async function openAccount(){
+  const d = await loadAccount();
+  const loginCard = $('acLoginCard'), acctCard = $('acAccountCard');
+  if (d.loggedIn) {
+    loginCard.style.display = 'none'; acctCard.style.display = '';
+    $('acEmailLabel').textContent = 'เข้าสู่ระบบด้วย: ' + d.email;
+    if (d.credits) {
+      $('acCreditsBox').innerHTML = 'เครดิตคงเหลือ: <b>' + d.credits.total.toLocaleString() + '</b>'
+        + ' (ฟรี ' + (d.credits.freeCreditsRemaining||0).toLocaleString()
+        + ' · เติมเงิน ' + (d.credits.paidCreditsBalance||0).toLocaleString() + ')';
+    } else {
+      $('acCreditsBox').textContent = 'เช็คเครดิตไม่สำเร็จ — ลองปิดแล้วเปิดใหม่';
+    }
+  } else {
+    loginCard.style.display = ''; acctCard.style.display = 'none';
+    $('acEmail').value = ''; $('acPassword').value = ''; $('acmsg').textContent = '';
+  }
+  $('accountdlg').classList.add('show');
+}
+async function doLogin(){
+  const email = $('acEmail').value.trim(), password = $('acPassword').value;
+  if (!email || !password) { $('acmsg').innerHTML = '<span class="err">กรอกอีเมลและรหัสผ่านให้ครบ</span>'; return; }
+  const btn = $('acLoginBtn'); btn.disabled = true; btn.textContent = 'กำลังเข้าสู่ระบบ...';
+  try {
+    const r = await fetch('/api/rnai/login', { method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ email, password }) });
+    const d = await r.json();
+    if (d.ok) { toast('เข้าสู่ระบบสำเร็จ: ' + d.email); $('accountdlg').classList.remove('show'); loadAccount(); }
+    else { $('acmsg').innerHTML = '<span class="err">' + esc(d.error || 'เข้าสู่ระบบไม่สำเร็จ') + '</span>'; }
+  } catch (e) {
+    $('acmsg').innerHTML = '<span class="err">' + esc(String(e)) + '</span>';
+  } finally { btn.disabled = false; btn.textContent = 'เข้าสู่ระบบ'; }
+}
+async function doLogout(){
+  await fetch('/api/rnai/logout', { method:'POST' });
+  toast('ออกจากระบบแล้ว');
+  $('accountdlg').classList.remove('show');
+  loadAccount();
+}
+
 async function approve(jobId, ok, btn){
   btn.parentElement.querySelectorAll('button').forEach(b=>b.disabled=true);
   await fetch('/api/agent/approve', { method:'POST', headers:{'Content-Type':'application/json'},
@@ -782,6 +874,7 @@ input.addEventListener('keydown', e => {
   if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } });
 renderChips();
 loadProjects();
+loadAccount();
 
 /* ── Theme ── */
 function applyTheme(t){
@@ -1110,6 +1203,16 @@ class Handler(BaseHTTPRequestHandler):
         elif self.path.startswith("/api/sessions/"):
             d = history.load(self.path.rsplit("/", 1)[1])
             self._json(d if d else {"error": "not found"}, 200 if d else 404)
+        elif self.path == "/api/rnai/account":
+            from . import auth
+            if not auth.is_logged_in():
+                return self._json({"loggedIn": False})
+            creds = auth.credits()
+            self._json({
+                "loggedIn": True,
+                "email": config.get("RNAI_IO_EMAIL"),
+                "credits": creds,
+            })
         else:
             self._json({"error": "not found"}, 404)
 
@@ -1229,6 +1332,26 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json({"ok": True})
             except Exception as e:
                 return self._json({"ok": False, "error": str(e)})
+        if self.path == "/api/rnai/login":
+            from . import auth
+            try:
+                length = int(self.headers.get("Content-Length", 0))
+                req = json.loads(self.rfile.read(length))
+                email = (req.get("email") or "").strip()
+                password = req.get("password") or ""
+                if not email or not password:
+                    return self._json({"ok": False, "error": "กรอกอีเมลและรหัสผ่านให้ครบ"})
+                auth.login(email, password)
+                creds = auth.credits()
+                return self._json({"ok": True, "email": email, "credits": creds})
+            except auth.AuthError as e:
+                return self._json({"ok": False, "error": str(e)})
+            except Exception as e:
+                return self._json({"ok": False, "error": str(e)})
+        if self.path == "/api/rnai/logout":
+            from . import auth
+            auth.logout()
+            return self._json({"ok": True})
         if self.path != "/api/chat":
             return self._json({"error": "not found"}, 404)
         try:

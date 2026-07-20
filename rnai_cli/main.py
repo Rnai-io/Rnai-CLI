@@ -3,6 +3,7 @@
 
 ติดตั้ง:  pip install -e .
 ใช้งาน:   rnai chat "สวัสดี"  |  rnai status  |  rnai compare "โจทย์"  |  rnai agent "งาน"
+         rnai login  |  rnai credits  |  rnai logout   (บัญชี + เครดิต Rnai.io)
 """
 from __future__ import annotations
 import json as jsonlib
@@ -86,9 +87,18 @@ def status():
     for key, label in [("GEMINI_API_KEY", "Gemini"), ("GROQ_API_KEY", "Groq"),
                        ("OPENROUTER_API_KEY", "OpenRouter"), ("CEREBRAS_API_KEY", "Cerebras"),
                        ("MISTRAL_API_KEY", "Mistral"), ("GITHUB_API_KEY", "GitHub Models"),
-                       ("TAVILY_API_KEY", "Tavily search"), ("RNAI_IO_API_KEY", "Rnai.io skills")]:
+                       ("TAVILY_API_KEY", "Tavily search")]:
         table.add_row(label, "🟢 set" if cfg.get(key) else "⚪ not set",
                       "" if cfg.get(key) else f"rnai config set {key} <key>")
+
+    # Rnai.io account (login / API key / เครดิต)
+    from . import auth
+    if auth.is_logged_in():
+        creds = auth.credits()
+        detail = f"เครดิตคงเหลือ: {creds['total']:,}" if creds else "เช็คเครดิตไม่สำเร็จ"
+        table.add_row(f"Rnai.io ({cfg.get('RNAI_IO_EMAIL') or '?'})", "🟢 logged in", detail)
+    else:
+        table.add_row("Rnai.io account", "⚪ not logged in", "rnai login")
     console.print(table)
 
 
@@ -353,6 +363,60 @@ def templates_cmd(
             task = w.add_task(prompt, at=at_val)
         console.print(f"[green]✓ เพิ่มงาน {task['id']}[/green] — {w.describe_schedule(task['schedule'])}")
         console.print("[dim]Worker ต้องทำงานอยู่: rnai worker --install (ครั้งเดียว)[/dim]")
+
+
+# ── account (Rnai.io) ───────────────────────────────────────────────────────
+@app.command()
+def login(
+    email: Optional[str] = typer.Option(None, "--email", "-e", help="อีเมลบัญชี Rnai.io"),
+):
+    """เข้าสู่ระบบ Rnai.io — ขอ API key ให้อัตโนมัติ ไม่ต้องเข้าเว็บไปสร้างเอง"""
+    from . import auth
+    email = email or typer.prompt("อีเมล Rnai.io")
+    password = typer.prompt("รหัสผ่าน", hide_input=True)
+    try:
+        with console.status("[cyan]กำลังเข้าสู่ระบบ Rnai.io...[/cyan]"):
+            auth.login(email, password)
+        console.print(f"[green]✓ เข้าสู่ระบบสำเร็จ[/green] ({email}) — สร้าง API key ให้อัตโนมัติแล้ว")
+        creds = auth.credits()
+        if creds:
+            console.print(f"[dim]เครดิตคงเหลือ: {creds['total']:,}[/dim]")
+    except auth.AuthError as e:
+        console.print(f"[red]เข้าสู่ระบบไม่สำเร็จ:[/red] {e}")
+        raise typer.Exit(1)
+
+
+@app.command()
+def logout():
+    """ออกจากระบบ Rnai.io (ลบ API key ที่เก็บไว้ในเครื่อง)"""
+    from . import auth
+    if not auth.is_logged_in():
+        console.print("[dim]ยังไม่ได้เข้าสู่ระบบอยู่แล้ว[/dim]")
+        return
+    auth.logout()
+    console.print("[green]✓ ออกจากระบบ Rnai.io แล้ว[/green]")
+
+
+@app.command()
+def credits():
+    """เช็คเครดิต Rnai.io คงเหลือของบัญชีที่ login อยู่"""
+    from . import auth
+    if not auth.is_logged_in():
+        console.print("[dim]ยังไม่ได้เข้าสู่ระบบ — รัน: rnai login[/dim]")
+        raise typer.Exit(1)
+    data = auth.credits()
+    if not data:
+        console.print("[red]เช็คเครดิตไม่สำเร็จ — API key อาจถูกเพิกถอน ลอง rnai login ใหม่[/red]")
+        raise typer.Exit(1)
+    email = cfg_store.get("RNAI_IO_EMAIL") or "?"
+    table = Table(title=f"เครดิต Rnai.io — {email}")
+    table.add_column("ประเภท", style="cyan")
+    table.add_column("จำนวน", justify="right")
+    table.add_row("ฟรี", f"{data.get('freeCreditsRemaining', 0):,}")
+    table.add_row("เติมเงิน", f"{data.get('paidCreditsBalance', 0):,}")
+    table.add_row("รวม", f"[bold]{data['total']:,}[/bold]")
+    console.print(table)
+    console.print("[dim]เติมเครดิตเพิ่ม: https://rnai-io.vercel.app/dashboard/billing[/dim]")
 
 
 # ── config ──────────────────────────────────────────────────────────────────

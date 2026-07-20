@@ -39,9 +39,13 @@ DEFAULTS = {
     "OLLAMA_MODEL": "rnai",
     # Web search
     "TAVILY_API_KEY": "",
-    # Rnai.io backend (สำหรับ tool เรียก skills)
+    # Rnai.io backend (สำหรับ tool เรียก skills + login/เครดิต)
     "RNAI_IO_BASE": "https://rnai-io.vercel.app",
     "RNAI_IO_API_KEY": "",
+    "RNAI_IO_EMAIL": "",
+    # Firebase Web API key ของ Rnai.io — ค่า public (ฝังในเว็บ client อยู่แล้ว)
+    # ใช้แค่ยิง signInWithPassword ตอน `rnai login` เพื่อขอ idToken ชั่วคราว
+    "FIREBASE_WEB_API_KEY": "AIzaSyClvommZRbP7-s0ZoU8-bb4zKPMgZJ8FT4",
     # Workspace folder — โฟลเดอร์ทำงานของ agent (เหมือนเปิดโปรเจกต์ใน IDE)
     "WORKSPACE_DIR": str(Path.home() / "RnaiWorkspace"),
     # รายการโปรเจกต์ที่เคยเปิด (path) — แสดงใน sidebar
