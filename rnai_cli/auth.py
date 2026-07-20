@@ -87,6 +87,47 @@ def is_logged_in() -> bool:
     return bool(config.get("RNAI_IO_API_KEY"))
 
 
+def platform_chat(message: str) -> dict:
+    """คุยกับ rnai-llm ผ่าน Rnai.io (POST /api/rnai/chat) แทนการยิง Modal ตรง
+
+    ใช้เครดิต/quota ของบัญชีที่ login อยู่ — สมาชิกที่ท็อปอัพเดือนนี้ได้ rnai-llm
+    ตัวจริงตาม quota รายเดือน ส่วนสมาชิกฟรีจะได้ Gemini แทนอัตโนมัติแบบไม่สะดุด
+    (เซิร์ฟเวอร์ตัดสินใจเอง — ดู data["fallback"]/data["reason"] เพื่อรู้ว่าทำไม)
+
+    คืน dict: {text, model, free, fallback?, reason?, quota?}
+    raise AuthError ถ้ายังไม่ login หรือเรียกไม่สำเร็จ
+    """
+    key = config.get("RNAI_IO_API_KEY")
+    if not key:
+        raise AuthError(
+            "ต้องเข้าสู่ระบบ Rnai.io ก่อนถึงจะใช้ rnai-llm ได้ — รัน: rnai login\n"
+            "(หรือใช้โมเดลอื่นที่ไม่ต้อง login เช่น --model groq/gemini ถ้าตั้งค่า key ของตัวเองไว้แล้ว)"
+        )
+    base = config.get("RNAI_IO_BASE")
+    try:
+        r = httpx.post(
+            f"{base}/api/rnai/chat",
+            headers={"Authorization": f"Bearer {key}"},
+            json={"message": message},
+            timeout=60,
+        )
+    except httpx.HTTPError as e:
+        raise AuthError(f"ต่อ Rnai.io ไม่ได้: {e}") from e
+
+    if r.status_code == 401:
+        raise AuthError("API key หมดอายุหรือถูกเพิกถอน — ลอง rnai login ใหม่")
+    if r.status_code == 429:
+        raise AuthError("ใช้งานถี่เกินไป โปรดลองใหม่อีกสักครู่")
+    if r.status_code >= 400:
+        try:
+            detail = r.json().get("error", r.text[:200])
+        except Exception:
+            detail = r.text[:200]
+        raise AuthError(f"เรียก Rnai LLM ไม่สำเร็จ (HTTP {r.status_code}): {detail}")
+
+    return r.json()
+
+
 def credits() -> Optional[dict]:
     """เช็คเครดิตคงเหลือ — คืน None ถ้ายังไม่ login หรือเรียก Rnai.io ไม่สำเร็จ"""
     key = config.get("RNAI_IO_API_KEY")

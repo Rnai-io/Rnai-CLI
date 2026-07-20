@@ -9,7 +9,7 @@ import json
 from rich.console import Console
 
 from . import config, tools
-from .providers import get_provider, rnai_messages
+from .providers import get_provider
 
 console = Console()
 
@@ -27,7 +27,15 @@ def run_agent(task: str, planner_name: str | None = None,
               on_event=None) -> str:
     """on_event(kind, text) — รายงานความคืบหน้า (ใช้โดย Web UI): kind = tool | result | info"""
     cfg = config.load()
-    planner = get_provider(planner_name or cfg["AGENT_PLANNER"])
+    resolved_planner = (planner_name or cfg["AGENT_PLANNER"])
+    if resolved_planner.split("/")[0].lower() == "rnai":
+        raise SystemExit(
+            "planner 'rnai' ใช้ไม่ได้ — rnai-llm ตอนนี้คุยผ่านบัญชี Rnai.io แบบ "
+            "prompt เดียว ไม่รองรับ tool-calling ที่ agent ต้องใช้วางแผนหลายขั้นตอน\n"
+            "ใช้ --planner groq (default) หรือ --planner gemini แทน — "
+            "rnai ยังใช้เป็นเสียงตอบสรุปได้ปกติ (--voice rnai)"
+        )
+    planner = get_provider(resolved_planner)
     voice = voice if voice is not None else cfg["AGENT_VOICE"]
     max_steps = max_steps or int(cfg["AGENT_MAX_STEPS"])
 
@@ -87,16 +95,16 @@ def run_agent(task: str, planner_name: str | None = None,
     else:
         final_answer = "ครบจำนวน step สูงสุดแล้วยังไม่จบงาน — สรุปเท่าที่ได้:\n" + (final_answer or "(ไม่มีผลลัพธ์)")
 
-    # ── Voice: ให้ rnai-llm เรียบเรียงเป็นเสียง Rnai ────────────────────────
+    # ── Voice: ให้ rnai-llm เรียบเรียงเป็นเสียง Rnai (ผ่านบัญชี Rnai.io) ──────
     if voice == "rnai" and final_answer:
         try:
-            rnai = get_provider("rnai")
-            polished = rnai.chat(rnai_messages(
+            from . import auth
+            data = auth.platform_chat(
                 "ช่วยเรียบเรียงคำตอบต่อไปนี้ให้เป็นธรรมชาติแบบคุณ Rnai กระชับ ตรงประเด็น "
                 "คงข้อเท็จจริง ตัวเลข และลิงก์ไว้ครบถ้วน ห้ามเพิ่มข้อมูลใหม่:\n\n" + final_answer
-            ), max_tokens=1024, timeout=200)
-            if polished["content"]:
-                return polished["content"]
+            )
+            if data.get("text"):
+                return data["text"]
         except Exception as e:
             console.print(f"[dim]⚠️ voice rnai ใช้ไม่ได้ ({e}) — ส่งคำตอบจาก planner ตรงๆ[/dim]")
     return final_answer

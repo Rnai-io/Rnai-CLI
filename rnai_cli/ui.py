@@ -1071,7 +1071,7 @@ CONFIG_SECTIONS = [
         ("MISTRAL_API_KEY", "Mistral", 'ที่ <a href="https://console.mistral.ai" target="_blank">console.mistral.ai</a>', True, ""),
         ("GITHUB_API_KEY", "GitHub Models", 'ใช้ GitHub PAT จาก <a href="https://github.com/settings/tokens" target="_blank">settings/tokens</a>', True, "ghp_..."),
         ("TAVILY_API_KEY", "Tavily (Web Search)", 'ฟรี 1,000 ครั้ง/เดือนที่ <a href="https://tavily.com" target="_blank">tavily.com</a> — ให้ agent ค้นเว็บ', True, "tvly-..."),
-        ("RNAI_IO_API_KEY", "Rnai.io Skills", 'สร้างจากหน้าโปรไฟล์ <a href="https://rnai-io.vercel.app" target="_blank">Rnai.io</a> — ให้ agent เรียก skills', True, "rnai_sk_..."),
+        ("RNAI_IO_API_KEY", "Rnai.io Skills", 'สร้างอัตโนมัติตอน rnai login (ปุ่ม 🔌 Rnai.io มุมขวาบน) — ใช้คุยกับ rnai-llm และให้ agent เรียก skills ผ่านเครดิต/quota ของบัญชี', True, "rnai_sk_..."),
     ]),
     ("Agent", [
         ("AGENT_PLANNER", "Planner (สมองวางแผน)", "gemini | groq — ตัวที่คิดและเรียก tools", False, "gemini"),
@@ -1365,12 +1365,25 @@ class Handler(BaseHTTPRequestHandler):
             sid = req.get("session_id") or history.new_session(text, model_name)
             history.append(sid, "user", text)
 
-            # ประกอบ messages จากประวัติทั้งหมดของ session
+            if model_name.split("/")[0].lower() == "rnai":
+                from . import auth
+                t0 = time.time()
+                try:
+                    pdata = auth.platform_chat(text)
+                except auth.AuthError as e:
+                    return self._json({"session_id": sid, "error": str(e)})
+                reply = pdata.get("text") or "(ไม่มีคำตอบ)"
+                model_used = pdata.get("model", "rnai-llm")
+                if pdata.get("fallback"):
+                    model_used += " (fallback)"
+                history.append(sid, "assistant", reply, model=model_used)
+                return self._json({"session_id": sid, "reply": reply,
+                                    "model": model_used, "elapsed": time.time() - t0})
+
+            # ประกอบ messages จากประวัติทั้งหมดของ session (โมเดล BYOK อื่นๆ)
             data = history.load(sid)
             msgs = [{"role": m["role"], "content": m["content"]} for m in data["messages"]]
             p = get_provider(model_name)
-            if p.name == "rnai":
-                msgs = [{"role": "system", "content": config.get("RNAI_SYSTEM_PROMPT")}] + msgs
 
             resp = p.chat(msgs, max_tokens=1500, timeout=200)
             reply = resp["content"] or "(ไม่มีคำตอบ)"

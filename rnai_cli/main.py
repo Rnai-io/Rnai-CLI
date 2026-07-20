@@ -16,7 +16,7 @@ from rich.panel import Panel
 from rich.table import Table
 
 from . import config as cfg_store
-from .providers import get_provider, rnai_messages
+from .providers import get_provider
 
 app = typer.Typer(help="Rnai-CLI — AI agent สำหรับระบบ Rnai.io", no_args_is_help=True)
 config_app = typer.Typer(help="จัดการ config (~/.rnai/config.json)")
@@ -35,9 +35,39 @@ def chat(
     raw: bool = typer.Option(False, "--raw", help="แสดง JSON ดิบ"),
     max_tokens: int = typer.Option(1024, "--max-tokens"),
 ):
-    """คุยกับโมเดล (default: rnai-llm พร้อม system prompt ที่ถูกต้องเสมอ)"""
+    """คุยกับโมเดล (default: rnai-llm ผ่านบัญชี Rnai.io — ใช้เครดิต/quota ของคุณ)"""
+    from . import history as hist
+
+    if model.split("/")[0].lower() == "rnai":
+        from . import auth
+        try:
+            with console.status("[cyan]rnai-llm กำลังคิด (ผ่าน Rnai.io)...[/cyan]"):
+                data = auth.platform_chat(prompt)
+        except auth.AuthError as e:
+            console.print(f"[red]{e}[/red]")
+            raise typer.Exit(1)
+        if raw:
+            console.print_json(jsonlib.dumps(data, ensure_ascii=False))
+            return
+        text = data.get("text") or "(ไม่มีคำตอบ)"
+        console.print(Markdown(text))
+        model_used = data.get("model", "rnai-llm")
+        note = ""
+        if data.get("fallback"):
+            reason = {
+                "not-member": "ยังไม่ได้ท็อปอัพเดือนนี้",
+                "quota-exhausted": "โควต้า rnai-llm เดือนนี้หมด",
+                "model-unavailable": "rnai-llm ไม่พร้อมใช้งานชั่วคราว",
+            }.get(data.get("reason"), data.get("reason", ""))
+            note = f" · fallback ({reason})" if reason else " · fallback"
+        console.print(f"[dim]โมเดล: {model_used}{note}[/dim]")
+        sid = hist.new_session(prompt, model_used)
+        hist.append(sid, "user", prompt)
+        hist.append(sid, "assistant", text, model=model_used)
+        return
+
     p = get_provider(model)
-    messages = rnai_messages(prompt) if p.name == "rnai" else [{"role": "user", "content": prompt}]
+    messages = [{"role": "user", "content": prompt}]
     with console.status(f"[cyan]{p.name}/{p.model} กำลังคิด... (ถ้าโมเดลหลับ รอ ~2 นาที)[/cyan]"):
         resp = p.chat(messages, max_tokens=max_tokens)
     if raw:
@@ -49,7 +79,6 @@ def chat(
     u = resp["usage"]
     console.print(f"[dim]⏱ {resp['elapsed']:.1f}s | tokens {u.get('total_tokens', '?')} | {resp['finish_reason']}[/dim]")
     # บันทึกลงประวัติ (~/.rnai/history) ให้ Web UI เห็นด้วย
-    from . import history as hist
     sid = hist.new_session(prompt, p.name)
     hist.append(sid, "user", prompt)
     hist.append(sid, "assistant", resp["content"], model=f"{p.name}/{p.model}")
@@ -120,12 +149,25 @@ def compare(
     max_tokens: int = typer.Option(700, "--max-tokens"),
 ):
     """ยิงโจทย์เดียวกันใส่หลายโมเดล เทียบคำตอบ + ความเร็ว"""
+    import time as _time
     names = [m.strip() for m in models.split(",") if m.strip()]
     results = []
     for name in names:
+        if name.split("/")[0].lower() == "rnai":
+            from . import auth
+            try:
+                t0 = _time.time()
+                with console.status("[cyan]rnai กำลังตอบ (ผ่าน Rnai.io)...[/cyan]"):
+                    data = auth.platform_chat(prompt)
+                elapsed = _time.time() - t0
+                model_used = data.get("model", "rnai-llm")
+                results.append((name, model_used, {"content": data.get("text", ""), "elapsed": elapsed, "usage": {}}))
+            except auth.AuthError as e:
+                results.append((name, "-", {"content": f"ERROR: {e}", "elapsed": 0, "usage": {}}))
+            continue
         try:
             p = get_provider(name)
-            messages = rnai_messages(prompt) if p.name == "rnai" else [{"role": "user", "content": prompt}]
+            messages = [{"role": "user", "content": prompt}]
             with console.status(f"[cyan]{name} กำลังตอบ...[/cyan]"):
                 resp = p.chat(messages, max_tokens=max_tokens)
             results.append((name, p.model, resp))
@@ -334,14 +376,20 @@ def templates_cmd(
     prompt = tpl.fill_placeholders(t["prompt"], lambda var: typer.prompt(f"  {var}"))
 
     if t["type"] == "chat":
-        p = get_provider("rnai")
-        with console.status("[cyan]Rnai กำลังคิด...[/cyan]"):
-            resp = p.chat(rnai_messages(prompt), max_tokens=1500, timeout=200)
-        console.print(Markdown(resp["content"]))
+        from . import auth
         from . import history as hist
-        sid = hist.new_session(t["title"], "rnai")
+        try:
+            with console.status("[cyan]Rnai กำลังคิด (ผ่าน Rnai.io)...[/cyan]"):
+                data = auth.platform_chat(prompt)
+        except auth.AuthError as e:
+            console.print(f"[red]{e}[/red]")
+            raise typer.Exit(1)
+        text = data.get("text") or "(ไม่มีคำตอบ)"
+        model_used = data.get("model", "rnai-llm")
+        console.print(Markdown(text))
+        sid = hist.new_session(t["title"], model_used)
         hist.append(sid, "user", prompt)
-        hist.append(sid, "assistant", resp["content"], model="rnai")
+        hist.append(sid, "assistant", text, model=model_used)
     elif t["type"] == "agent":
         from .agent import run_agent
         answer = run_agent(prompt)

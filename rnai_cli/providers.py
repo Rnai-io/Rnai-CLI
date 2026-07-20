@@ -62,6 +62,10 @@ class Provider:
 
 
 # provider name -> (ต้องมี key ไหม, ที่สมัคร key)
+# หมายเหตุ "rnai": get_provider("rnai") ยังสร้าง Provider นี้ได้ปกติ (ไม่ต้องใส่ key
+# ที่นี่) แต่จุดใช้งานจริงทั้งหมด (chat/agent voice/templates/Cowork UI) ไม่เรียก
+# .chat() ของมันตรงๆ อีกต่อไป — ใช้ auth.platform_chat() ซึ่งต้อง `rnai login` ก่อน
+# (คุยผ่าน Rnai.io ใช้เครดิต/quota ของบัญชี, endpoint Modal ตรงถูกล็อกด้วย --api-key แล้ว)
 PROVIDER_INFO = {
     "rnai":       (False, ""),
     "ollama":     (False, "ติดตั้ง ollama.com แล้วรัน: ollama create rnai -f Modelfile"),
