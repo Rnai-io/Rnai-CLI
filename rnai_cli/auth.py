@@ -87,12 +87,16 @@ def is_logged_in() -> bool:
     return bool(config.get("RNAI_IO_API_KEY"))
 
 
-def platform_chat(message: str) -> dict:
+def platform_chat(message: str, history: Optional[list] = None) -> dict:
     """คุยกับ rnai-llm ผ่าน Rnai.io (POST /api/rnai/chat) แทนการยิง Modal ตรง
 
     ใช้เครดิต/quota ของบัญชีที่ login อยู่ — สมาชิกที่ท็อปอัพเดือนนี้ได้ rnai-llm
     ตัวจริงตาม quota รายเดือน ส่วนสมาชิกฟรีจะได้ Gemini แทนอัตโนมัติแบบไม่สะดุด
     (เซิร์ฟเวอร์ตัดสินใจเอง — ดู data["fallback"]/data["reason"] เพื่อรู้ว่าทำไม)
+
+    history: บทสนทนาก่อนหน้า [{"role": "user"|"assistant", "content": "..."}]
+    ไม่รวมข้อความล่าสุด (ส่งแยกเป็น message) — server จะตัดให้เหลือแค่ ~12 turn
+    ล่าสุดเองถ้าส่งมายาวเกิน ไม่ต้องตัดฝั่ง client ก็ได้
 
     คืน dict: {text, model, free, fallback?, reason?, quota?}
     raise AuthError ถ้ายังไม่ login หรือเรียกไม่สำเร็จ
@@ -104,11 +108,14 @@ def platform_chat(message: str) -> dict:
             "(หรือใช้โมเดลอื่นที่ไม่ต้อง login เช่น --model groq/gemini ถ้าตั้งค่า key ของตัวเองไว้แล้ว)"
         )
     base = config.get("RNAI_IO_BASE")
+    payload: dict = {"message": message}
+    if history:
+        payload["history"] = history
     try:
         r = httpx.post(
             f"{base}/api/rnai/chat",
             headers={"Authorization": f"Bearer {key}"},
-            json={"message": message},
+            json=payload,
             timeout=60,
         )
     except httpx.HTTPError as e:

@@ -1367,9 +1367,16 @@ class Handler(BaseHTTPRequestHandler):
 
             if model_name.split("/")[0].lower() == "rnai":
                 from . import auth
+                # บทสนทนาก่อนหน้า (ไม่รวมข้อความล่าสุดที่เพิ่ง append ข้างบน) —
+                # ให้ rnai-llm/Gemini fallback มี context ต่อเนื่องข้ามรอบสนทนา
+                prior = history.load(sid)
+                prior_msgs = (
+                    [{"role": m["role"], "content": m["content"]} for m in prior["messages"][:-1]]
+                    if prior else []
+                )
                 t0 = time.time()
                 try:
-                    pdata = auth.platform_chat(text)
+                    pdata = auth.platform_chat(text, history=prior_msgs)
                 except auth.AuthError as e:
                     return self._json({"session_id": sid, "error": str(e)})
                 reply = pdata.get("text") or "(ไม่มีคำตอบ)"
