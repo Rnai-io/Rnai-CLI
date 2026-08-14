@@ -1123,11 +1123,11 @@ async function loadConfig(){
   if (!d) {
     d = { sections: [
       { title: 'Cloud Models API Keys (สำหรับ WebApp บน Netlify)', items: [
-        { label: 'GROQ_API_KEY', key: 'GROQ_API_KEY', desc: 'gsk_... สำหรับ Groq (Llama-3.3)', secret: true, set: !!localStorage.getItem('GROQ_API_KEY'), value: localStorage.getItem('GROQ_API_KEY')||'' },
-        { label: 'GEMINI_API_KEY', key: 'GEMINI_API_KEY', desc: 'จาก aistudio.google.com สำหรับ Gemini', secret: true, set: !!localStorage.getItem('GEMINI_API_KEY'), value: localStorage.getItem('GEMINI_API_KEY')||'' },
-        { label: 'OPENROUTER_API_KEY', key: 'OPENROUTER_API_KEY', desc: 'sk-or-... สำหรับ OpenRouter', secret: true, set: !!localStorage.getItem('OPENROUTER_API_KEY'), value: localStorage.getItem('OPENROUTER_API_KEY')||'' },
-        { label: 'HF_API_KEY', key: 'HF_API_KEY', desc: 'hf_... ฟรีจาก huggingface.co สำหรับ rnai-llm v4.1 GGUF', secret: true, set: !!localStorage.getItem('HF_API_KEY'), value: localStorage.getItem('HF_API_KEY')||'' },
-        { label: 'RNAI_IO_API_KEY', key: 'RNAI_IO_API_KEY', desc: 'rnai_sk_... จากโปรไฟล์ Rnai.io', secret: true, set: !!localStorage.getItem('RNAI_IO_API_KEY'), value: localStorage.getItem('RNAI_IO_API_KEY')||'' }
+        { label: 'GROQ_API_KEY', key: 'GROQ_API_KEY', desc: 'gsk_... สำหรับ Groq — <a href="https://console.groq.com/keys" target="_blank" style="color:var(--brand-ink);font-weight:600">รับ Key ฟรีที่ console.groq.com 🔗</a>', secret: true, set: !!localStorage.getItem('GROQ_API_KEY'), value: localStorage.getItem('GROQ_API_KEY')||'' },
+        { label: 'GEMINI_API_KEY', key: 'GEMINI_API_KEY', desc: 'สำหรับ Gemini — <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color:var(--brand-ink);font-weight:600">รับ Key ฟรีที่ aistudio.google.com 🔗</a>', secret: true, set: !!localStorage.getItem('GEMINI_API_KEY'), value: localStorage.getItem('GEMINI_API_KEY')||'' },
+        { label: 'HF_API_KEY', key: 'HF_API_KEY', desc: 'สำหรับ rnai-llm v4.1 GGUF — <a href="https://huggingface.co/settings/tokens" target="_blank" style="color:var(--brand-ink);font-weight:600">รับ Token ฟรีที่ huggingface.co 🔗</a>', secret: true, set: !!localStorage.getItem('HF_API_KEY'), value: localStorage.getItem('HF_API_KEY')||'' },
+        { label: 'OPENROUTER_API_KEY', key: 'OPENROUTER_API_KEY', desc: 'สำหรับ OpenRouter — <a href="https://openrouter.ai/keys" target="_blank" style="color:var(--brand-ink);font-weight:600">รับ Key ที่ openrouter.ai 🔗</a>', secret: true, set: !!localStorage.getItem('OPENROUTER_API_KEY'), value: localStorage.getItem('OPENROUTER_API_KEY')||'' },
+        { label: 'RNAI_IO_API_KEY', key: 'RNAI_IO_API_KEY', desc: 'จากโปรไฟล์ Rnai.io — <a href="https://rnai-io.vercel.app/dashboard/profile" target="_blank" style="color:var(--brand-ink);font-weight:600">ดู Key ที่ Rnai.io 🔗</a>', secret: true, set: !!localStorage.getItem('RNAI_IO_API_KEY'), value: localStorage.getItem('RNAI_IO_API_KEY')||'' }
       ]}
     ]};
   }

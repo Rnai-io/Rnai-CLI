@@ -1193,11 +1193,11 @@ async function loadConfig(){
   if (!d) {
     d = { sections: [
       { title: 'Cloud Models API Keys (สำหรับ WebApp บน Netlify)', items: [
-        { label: 'GROQ_API_KEY', key: 'GROQ_API_KEY', desc: 'gsk_... สำหรับ Groq (Llama-3.3)', secret: true, set: !!localStorage.getItem('GROQ_API_KEY'), value: localStorage.getItem('GROQ_API_KEY')||'' },
-        { label: 'GEMINI_API_KEY', key: 'GEMINI_API_KEY', desc: 'จาก aistudio.google.com สำหรับ Gemini', secret: true, set: !!localStorage.getItem('GEMINI_API_KEY'), value: localStorage.getItem('GEMINI_API_KEY')||'' },
-        { label: 'OPENROUTER_API_KEY', key: 'OPENROUTER_API_KEY', desc: 'sk-or-... สำหรับ OpenRouter', secret: true, set: !!localStorage.getItem('OPENROUTER_API_KEY'), value: localStorage.getItem('OPENROUTER_API_KEY')||'' },
-        { label: 'HF_API_KEY', key: 'HF_API_KEY', desc: 'hf_... ฟรีจาก huggingface.co สำหรับ rnai-llm v4.1 GGUF', secret: true, set: !!localStorage.getItem('HF_API_KEY'), value: localStorage.getItem('HF_API_KEY')||'' },
-        { label: 'RNAI_IO_API_KEY', key: 'RNAI_IO_API_KEY', desc: 'rnai_sk_... จากโปรไฟล์ Rnai.io', secret: true, set: !!localStorage.getItem('RNAI_IO_API_KEY'), value: localStorage.getItem('RNAI_IO_API_KEY')||'' }
+        { label: 'GROQ_API_KEY', key: 'GROQ_API_KEY', desc: 'gsk_... สำหรับ Groq — <a href="https://console.groq.com/keys" target="_blank" style="color:var(--brand-ink);font-weight:600">รับ Key ฟรีที่ console.groq.com 🔗</a>', secret: true, set: !!localStorage.getItem('GROQ_API_KEY'), value: localStorage.getItem('GROQ_API_KEY')||'' },
+        { label: 'GEMINI_API_KEY', key: 'GEMINI_API_KEY', desc: 'สำหรับ Gemini — <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color:var(--brand-ink);font-weight:600">รับ Key ฟรีที่ aistudio.google.com 🔗</a>', secret: true, set: !!localStorage.getItem('GEMINI_API_KEY'), value: localStorage.getItem('GEMINI_API_KEY')||'' },
+        { label: 'HF_API_KEY', key: 'HF_API_KEY', desc: 'สำหรับ rnai-llm v4.1 GGUF — <a href="https://huggingface.co/settings/tokens" target="_blank" style="color:var(--brand-ink);font-weight:600">รับ Token ฟรีที่ huggingface.co 🔗</a>', secret: true, set: !!localStorage.getItem('HF_API_KEY'), value: localStorage.getItem('HF_API_KEY')||'' },
+        { label: 'OPENROUTER_API_KEY', key: 'OPENROUTER_API_KEY', desc: 'สำหรับ OpenRouter — <a href="https://openrouter.ai/keys" target="_blank" style="color:var(--brand-ink);font-weight:600">รับ Key ที่ openrouter.ai 🔗</a>', secret: true, set: !!localStorage.getItem('OPENROUTER_API_KEY'), value: localStorage.getItem('OPENROUTER_API_KEY')||'' },
+        { label: 'RNAI_IO_API_KEY', key: 'RNAI_IO_API_KEY', desc: 'จากโปรไฟล์ Rnai.io — <a href="https://rnai-io.vercel.app/dashboard/profile" target="_blank" style="color:var(--brand-ink);font-weight:600">ดู Key ที่ Rnai.io 🔗</a>', secret: true, set: !!localStorage.getItem('RNAI_IO_API_KEY'), value: localStorage.getItem('RNAI_IO_API_KEY')||'' }
       ]}
     ]};
   }
@@ -1301,15 +1301,15 @@ def start_agent_job(session_id: str | None, message: str) -> dict:
 # ── โครงหน้า Settings: หมวด → รายการ (key, ป้าย, คำอธิบาย, ลับไหม) ──────────
 CONFIG_SECTIONS = [
     ("API Keys", [
-        ("GROQ_API_KEY", "Groq", 'ฟรีที่ <a href="https://console.groq.com" target="_blank">console.groq.com</a> — โมเดลเร็ว + ตัวเลือก planner', True, "gsk_..."),
-        ("GEMINI_API_KEY", "Gemini", 'ฟรีที่ <a href="https://aistudio.google.com" target="_blank">aistudio.google.com</a> — planner หลักของ agent', True, "key_xxx"),
-        ("OPENROUTER_API_KEY", "OpenRouter", 'ฟรีที่ <a href="https://openrouter.ai/keys" target="_blank">openrouter.ai/keys</a> — โมเดลฟรีหลายสิบตัว', True, "sk-or-..."),
-        ("HF_API_KEY", "Hugging Face", 'ฟรีที่ <a href="https://huggingface.co/settings/tokens" target="_blank">huggingface.co/settings/tokens</a> — รัน rnai-llm v4.1 GGUF', True, "hf_..."),
-        ("CEREBRAS_API_KEY", "Cerebras", 'ที่ <a href="https://cloud.cerebras.ai" target="_blank">cloud.cerebras.ai</a>', True, "csk-..."),
-        ("MISTRAL_API_KEY", "Mistral", 'ที่ <a href="https://console.mistral.ai" target="_blank">console.mistral.ai</a>', True, ""),
-        ("GITHUB_API_KEY", "GitHub Models", 'ใช้ GitHub PAT จาก <a href="https://github.com/settings/tokens" target="_blank">settings/tokens</a>', True, "ghp_..."),
-        ("TAVILY_API_KEY", "Tavily (Web Search)", 'ฟรี 1,000 ครั้ง/เดือนที่ <a href="https://tavily.com" target="_blank">tavily.com</a> — ให้ agent ค้นเว็บ', True, "tvly-..."),
-        ("RNAI_IO_API_KEY", "Rnai.io Skills", 'สร้างอัตโนมัติตอน rnai login (ปุ่ม 🔌 Rnai.io มุมขวาบน) — ใช้คุยกับ rnai-llm และให้ agent เรียก skills ผ่านเครดิต/quota ของบัญชี', True, "rnai_sk_..."),
+        ("GROQ_API_KEY", "Groq", 'ฟรีที่ <a href="https://console.groq.com/keys" target="_blank" style="font-weight:600">console.groq.com/keys 🔗</a> — โมเดลเร็ว + ตัวเลือก planner', True, "gsk_..."),
+        ("GEMINI_API_KEY", "Gemini", 'ฟรีที่ <a href="https://aistudio.google.com/app/apikey" target="_blank" style="font-weight:600">aistudio.google.com/app/apikey 🔗</a> — planner หลักของ agent', True, "key_xxx"),
+        ("OPENROUTER_API_KEY", "OpenRouter", 'ฟรีที่ <a href="https://openrouter.ai/keys" target="_blank" style="font-weight:600">openrouter.ai/keys 🔗</a> — โมเดลฟรีหลายสิบตัว', True, "sk-or-..."),
+        ("HF_API_KEY", "Hugging Face", 'ฟรีที่ <a href="https://huggingface.co/settings/tokens" target="_blank" style="font-weight:600">huggingface.co/settings/tokens 🔗</a> — รัน rnai-llm v4.1 GGUF', True, "hf_..."),
+        ("CEREBRAS_API_KEY", "Cerebras", 'ที่ <a href="https://cloud.cerebras.ai" target="_blank" style="font-weight:600">cloud.cerebras.ai 🔗</a>', True, "csk-..."),
+        ("MISTRAL_API_KEY", "Mistral", 'ที่ <a href="https://console.mistral.ai/api-keys" target="_blank" style="font-weight:600">console.mistral.ai/api-keys 🔗</a>', True, ""),
+        ("GITHUB_API_KEY", "GitHub Models", 'ใช้ GitHub PAT จาก <a href="https://github.com/settings/tokens" target="_blank" style="font-weight:600">github.com/settings/tokens 🔗</a>', True, "ghp_..."),
+        ("TAVILY_API_KEY", "Tavily (Web Search)", 'ฟรี 1,000 ครั้ง/เดือนที่ <a href="https://tavily.com" target="_blank" style="font-weight:600">tavily.com 🔗</a> — ให้ agent ค้นเว็บ', True, "tvly-..."),
+        ("RNAI_IO_API_KEY", "Rnai.io Skills", 'สร้างอัตโนมัติตอน rnai login — ดูคีย์ที่ <a href="https://rnai-io.vercel.app/dashboard/profile" target="_blank" style="font-weight:600">rnai-io.vercel.app 🔗</a>', True, "rnai_sk_..."),
     ]),
     ("Agent", [
         ("AGENT_PLANNER", "Planner (สมองวางแผน)", "gemini | groq — ตัวที่คิดและเรียก tools", False, "gemini"),
