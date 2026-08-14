@@ -1135,36 +1135,43 @@ async function chatDirectCloud(model, text) {
   if (model.includes('hf') || model.includes('huggingface')) {
     const headers = { 'Content-Type': 'application/json' };
     if (hfKey) headers['Authorization'] = `Bearer ${hfKey}`;
-    let reply = '';
+    const hfModels = [
+      'Qwen/Qwen2.5-Coder-32B-Instruct',
+      'meta-llama/Llama-3.2-3B-Instruct',
+      'mistralai/Mistral-7B-Instruct-v0.3',
+      'naiguitarfolk/rnai-llm-v4.1-gguf'
+    ];
+    let reply = '', lastError = '';
 
-    try {
-      const res = await fetch('https://router.huggingface.co/hf-inference/v1/chat/completions', {
-        method: 'POST', headers,
-        body: JSON.stringify({ model: 'Qwen/Qwen2.5-72B-Instruct', messages: [{ role: 'user', content: text }] })
-      });
-      const data = await res.json();
-      if (data.choices?.[0]?.message?.content) reply = data.choices[0].message.content;
-    } catch(e) {}
-
-    if (!reply) {
+    for (const hfm of hfModels) {
       try {
-        const res = await fetch('https://api-inference.huggingface.co/models/naiguitarfolk/rnai-llm-v4.1-gguf/v1/chat/completions', {
+        const res = await fetch(`https://router.huggingface.co/hf-inference/v1/chat/completions`, {
           method: 'POST', headers,
-          body: JSON.stringify({ model: 'naiguitarfolk/rnai-llm-v4.1-gguf', messages: [{ role: 'user', content: text }] })
+          body: JSON.stringify({ model: hfm, messages: [{ role: 'user', content: text }] })
         });
         const data = await res.json();
-        if (data.choices?.[0]?.message?.content) reply = data.choices[0].message.content;
-      } catch(e) {}
+        if (data.choices?.[0]?.message?.content) {
+          reply = data.choices[0].message.content;
+          break;
+        } else if (data.error) {
+          lastError = typeof data.error === 'string' ? data.error : data.error.message;
+        }
+      } catch(e) { lastError = String(e); }
     }
 
-    if (!reply) throw new Error('Hugging Face Model ต้องการ HF_API_KEY\\n\\nกรุณากดรับ Token ฟรีที่ <a href="https://huggingface.co/settings/tokens" target="_blank" style="color:var(--brand-ink);font-weight:600">huggingface.co/settings/tokens 🔗</a> แล้วใส่ใน Settings');
+    if (!reply) throw new Error('Hugging Face ต้องการ HF_API_KEY หรือโมเดลกำลังสลีป\\n\\nกรุณากดรับ Token ฟรีที่ <a href="https://huggingface.co/settings/tokens" target="_blank" style="color:var(--brand-ink);font-weight:600">huggingface.co/settings/tokens 🔗</a> แล้วใส่ใน Settings');
     return { reply, model: 'HuggingFace Cloud', elapsed: (performance.now() - t0)/1000 };
   }
 
   // 4. OPENROUTER
   if (model === 'openrouter') {
     if (!openrouterKey) throw new Error('กรุณากรอก OPENROUTER_API_KEY ในหน้า Settings ก่อนใช้งาน (สมัครฟรีที่ openrouter.ai/keys)');
-    const orModels = ['google/gemma-2-9b-it:free', 'meta-llama/llama-3.3-70b-instruct:free', 'qwen/qwen-2.5-7b-instruct:free'];
+    const orModels = [
+      'openrouter/auto',
+      'deepseek/deepseek-r1:free',
+      'qwen/qwen-2.5-7b-instruct:free',
+      'google/gemma-2-9b-it:free'
+    ];
     let reply = '', lastError = '';
     for (const om of orModels) {
       try {
@@ -1187,7 +1194,7 @@ async function chatDirectCloud(model, text) {
         }
       } catch(e) { lastError = String(e); }
     }
-    if (!reply) throw new Error(lastError || 'OpenRouter API Error');
+    if (!reply) throw new Error(lastError || 'OpenRouter API Error — ตรวจสอบ OPENROUTER_API_KEY ใน Settings');
     return { reply, model: 'OpenRouter Free', elapsed: (performance.now() - t0)/1000 };
   }
 
