@@ -1072,20 +1072,26 @@ async function chatDirectCloud(model, text) {
 
   if (model === 'gemini' || (!model.includes('groq') && !model.includes('openrouter') && !model.includes('hf') && geminiKey)) {
     if (!geminiKey) throw new Error('กรุณากรอก GEMINI_API_KEY ในหน้า Settings (คลิกปุ่ม Settings ด้านบน)');
-    let res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ contents: [{ parts: [{ text }] }] })
-    });
-    let data = await res.json();
-    if (data.error && data.error.code === 404) {
-      res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contents: [{ parts: [{ text }] }] })
-      });
-      data = await res.json();
+    const modelsToTry = ['gemini-1.5-flash', 'gemini-2.5-flash', 'gemini-1.5-pro'];
+    let reply = '', lastError = '';
+    for (const m of modelsToTry) {
+      try {
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${geminiKey}`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ contents: [{ parts: [{ text }] }] })
+        });
+        const data = await res.json();
+        if (data.candidates?.[0]?.content?.parts?.[0]?.text) {
+          reply = data.candidates[0].content.parts[0].text;
+          break;
+        } else if (data.error && data.error.message) {
+          lastError = data.error.message;
+        }
+      } catch(e) {
+        lastError = String(e);
+      }
     }
-    if (data.error) throw new Error(data.error.message || 'Gemini API Error');
-    const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || '(ไม่มีคำตอบ)';
+    if (!reply) throw new Error(lastError || 'Gemini API Error');
     return { reply, model: 'Gemini Flash', elapsed: (performance.now() - t0)/1000 };
   } else if (model === 'groq' || (!model.includes('openrouter') && !model.includes('hf') && groqKey)) {
     if (!groqKey) throw new Error('กรุณากรอก GROQ_API_KEY ในหน้า Settings ก่อนใช้งาน');
