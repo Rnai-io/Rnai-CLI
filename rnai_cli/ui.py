@@ -1141,19 +1141,19 @@ async function chatDirectCloud(model, text) {
       throw new Error('⚠️ ต้องการ HF_API_KEY ในหน้า Settings สำหรับเรียกใช้โมเดล Hugging Face\\n\\nกรุณากดรับ Token ฟรีที่ <a href="https://huggingface.co/settings/tokens" target="_blank" style="color:var(--brand-ink);font-weight:600">huggingface.co/settings/tokens 🔗</a> แล้วนำมาวางใน Settings');
     }
     const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${hfKey}` };
-    const hfModels = [
-      'Qwen/Qwen2.5-Coder-32B-Instruct',
-      'meta-llama/Llama-3.2-3B-Instruct',
-      'mistralai/Mistral-7B-Instruct-v0.3',
-      'naiguitarfolk/rnai-llm-v4.1-gguf'
+    const hfEndpoints = [
+      { url: 'https://router.huggingface.co/together/v1/chat/completions', model: 'meta-llama/Llama-3.3-70B-Instruct-Turbo' },
+      { url: 'https://router.huggingface.co/together/v1/chat/completions', model: 'Qwen/Qwen2.5-72B-Instruct' },
+      { url: 'https://router.huggingface.co/nebius/v1/chat/completions', model: 'meta-llama/Meta-Llama-3.1-70B-Instruct' },
+      { url: 'https://router.huggingface.co/novita/v1/chat/completions', model: 'meta-llama/llama-3.1-70b-instruct' }
     ];
     let reply = '', lastError = '';
 
-    for (const hfm of hfModels) {
+    for (const ep of hfEndpoints) {
       try {
-        const res = await fetch(`https://router.huggingface.co/hf-inference/v1/chat/completions`, {
+        const res = await fetch(ep.url, {
           method: 'POST', headers,
-          body: JSON.stringify({ model: hfm, messages: [{ role: 'user', content: text }] })
+          body: JSON.stringify({ model: ep.model, messages: [{ role: 'user', content: text }] })
         });
         const data = await res.json();
         if (data.choices?.[0]?.message?.content) {
