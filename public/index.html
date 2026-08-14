@@ -825,7 +825,22 @@ async function saveFolder(){
 
 /* ── Rnai.io account (login / เครดิต) ── */
 async function loadAccount(){
-  const d = await (await fetch('/api/rnai/account')).json();
+  let d;
+  try {
+    const r = await fetch('/api/rnai/account');
+    if (r.ok) d = await r.json();
+  } catch(e) {}
+
+  if (!d) {
+    const email = localStorage.getItem('RNAI_IO_EMAIL');
+    const key = localStorage.getItem('RNAI_IO_API_KEY');
+    if (email && key) {
+      d = { loggedIn: true, email: email, keyMasked: key.slice(0,6) + '...' + key.slice(-4) };
+    } else {
+      d = { loggedIn: false };
+    }
+  }
+
   const btn = $('acctBtn'); const sideBtn = $('sideAcctBtn');
   if (d.loggedIn) {
     const total = d.credits ? d.credits.total : null;
@@ -862,17 +877,65 @@ async function doLogin(){
   if (!email || !password) { $('acmsg').innerHTML = '<span class="err">กรอกอีเมลและรหัสผ่านให้ครบ</span>'; return; }
   const btn = $('acLoginBtn'); btn.disabled = true; btn.textContent = 'กำลังเข้าสู่ระบบ...';
   try {
-    const r = await fetch('/api/rnai/login', { method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ email, password }) });
-    const d = await r.json();
-    if (d.ok) { toast('เข้าสู่ระบบสำเร็จ: ' + d.email); $('accountdlg').classList.remove('show'); loadAccount(); }
-    else { $('acmsg').innerHTML = '<span class="err">' + esc(d.error || 'เข้าสู่ระบบไม่สำเร็จ') + '</span>'; }
+    let d;
+    try {
+      const r = await fetch('/api/rnai/login', { method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ email, password }) });
+      if (r.ok) d = await r.json();
+    } catch(e) {}
+
+    // Fallback: Direct Firebase Sign In for Netlify WebApp
+    if (!d || !d.ok) {
+      const fbKey = atob("QUl6YVN5Q2x2b21tWlJiUDctczBab1U4LWJiNHpLUE1nWko4RlQ0");
+      const fbRes = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${fbKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password, returnSecureToken: true })
+      });
+      const fbData = await fbRes.json();
+      if (fbData.error) {
+        const code = fbData.error.message || 'LOGIN_FAILED';
+        const msgs = {
+          EMAIL_NOT_FOUND: 'ไม่พบอีเมลนี้ในระบบ Rnai.io',
+          INVALID_PASSWORD: 'รหัสผ่านไม่ถูกต้อง',
+          INVALID_LOGIN_CREDENTIALS: 'อีเมลหรือรหัสผ่านไม่ถูกต้อง',
+          USER_DISABLED: 'บัญชีนี้ถูกระงับการใช้งาน',
+          TOO_MANY_ATTEMPTS_TRY_LATER: 'ลองผิดหลายครั้งเกินไป โปรดลองใหม่ภายหลัง'
+        };
+        throw new Error(msgs[code] || 'เข้าสู่ระบบไม่สำเร็จ: ' + code);
+      }
+
+      let apiKey = fbData.idToken;
+      try {
+        const pkRes = await fetch('https://rnai-io.vercel.app/api/keys', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${fbData.idToken}` },
+          body: JSON.stringify({ name: 'Web App Key' })
+        });
+        const pkData = await pkRes.json();
+        if (pkData.key) apiKey = pkData.key;
+      } catch(e) {}
+
+      localStorage.setItem('RNAI_IO_API_KEY', apiKey);
+      localStorage.setItem('RNAI_IO_EMAIL', fbData.email);
+      d = { ok: true, email: fbData.email };
+    }
+
+    if (d && d.ok) {
+      toast('เข้าสู่ระบบสำเร็จ: ' + d.email);
+      $('accountdlg').classList.remove('show');
+      loadAccount();
+    } else {
+      $('acmsg').innerHTML = '<span class="err">' + esc((d && d.error) || 'เข้าสู่ระบบไม่สำเร็จ') + '</span>';
+    }
   } catch (e) {
-    $('acmsg').innerHTML = '<span class="err">' + esc(String(e)) + '</span>';
+    $('acmsg').innerHTML = '<span class="err">' + esc(String(e.message || e)) + '</span>';
   } finally { btn.disabled = false; btn.textContent = 'เข้าสู่ระบบ'; }
 }
 async function doLogout(){
-  await fetch('/api/rnai/logout', { method:'POST' });
+  try { await fetch('/api/rnai/logout', { method:'POST' }); } catch(e) {}
+  localStorage.removeItem('RNAI_IO_API_KEY');
+  localStorage.removeItem('RNAI_IO_EMAIL');
   toast('ออกจากระบบแล้ว');
   $('accountdlg').classList.remove('show');
   loadAccount();
