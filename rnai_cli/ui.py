@@ -975,6 +975,57 @@ async function runTaskNow(id, btn){ btn.textContent = 'กำลังรัน.
   setTimeout(()=>{ btn.textContent='▶ รันเลย'; btn.disabled=false; loadTaskList(); }, 4000); }
 async function delTask(id){ await fetch('/api/tasks/'+id, { method:'DELETE' }); loadTaskList(); }
 
+async function chatDirectCloud(model, text) {
+  const t0 = performance.now();
+  if (model === 'gemini') {
+    const key = localStorage.getItem('GEMINI_API_KEY');
+    if (!key) throw new Error('กรุณาตั้งค่า GEMINI_API_KEY ในหน้า Settings ก่อนใช้งาน');
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contents: [{ parts: [{ text }] }] })
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error.message || 'Gemini API Error');
+    const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || '(ไม่มีคำตอบ)';
+    return { reply, model: 'Gemini 1.5 Flash', elapsed: (performance.now() - t0)/1000 };
+  } else if (model === 'groq') {
+    const key = localStorage.getItem('GROQ_API_KEY');
+    if (!key) throw new Error('กรุณาตั้งค่า GROQ_API_KEY ในหน้า Settings ก่อนใช้งาน');
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
+      body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages: [{ role: 'user', content: text }] })
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error.message || 'Groq API Error');
+    const reply = data.choices?.[0]?.message?.content || '(ไม่มีคำตอบ)';
+    return { reply, model: 'Groq (llama-3.3-70b)', elapsed: (performance.now() - t0)/1000 };
+  } else if (model === 'openrouter') {
+    const key = localStorage.getItem('OPENROUTER_API_KEY');
+    if (!key) throw new Error('กรุณาตั้งค่า OPENROUTER_API_KEY ในหน้า Settings ก่อนใช้งาน');
+    const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
+      body: JSON.stringify({ model: 'meta-llama/llama-3.1-8b-instruct:free', messages: [{ role: 'user', content: text }] })
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error.message || 'OpenRouter API Error');
+    const reply = data.choices?.[0]?.message?.content || '(ไม่มีคำตอบ)';
+    return { reply, model: 'OpenRouter (llama-3.1-8b)', elapsed: (performance.now() - t0)/1000 };
+  } else {
+    const key = localStorage.getItem('RNAI_IO_API_KEY');
+    const res = await fetch('https://rnai-io.vercel.app/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': key ? `Bearer ${key}` : '' },
+      body: JSON.stringify({ message: text })
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error || 'Rnai.io API Error');
+    return { reply: data.text || data.reply || '(ไม่มีคำตอบ)', model: data.model || 'rnai-llm', elapsed: (performance.now() - t0)/1000 };
+  }
+}
+
 async function send() {
   const text = $('input').value.trim(); if (!text) return;
   $('input').value = ''; autosize(); $('send').disabled = true;
@@ -983,12 +1034,18 @@ async function send() {
   const wait = addMsg('bot', 'กำลังคิด'); wait.classList.add('typing');
   scrollBottom();
   try {
-    const r = await fetch('/api/chat', { method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ session_id: sid, model: $('model').value, message: text }) });
-    const d = await r.json();
+    let d;
+    try {
+      const r = await fetch('/api/chat', { method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ session_id: sid, model: $('model').value, message: text }) });
+      if (r.ok) d = await r.json();
+    } catch(e) {}
+    if (!d) {
+      d = await chatDirectCloud($('model').value, text);
+    }
     wait.parentElement.remove();
     if (d.error) { const b = addMsg('bot', d.error); b.classList.add('err'); }
-    else { sid = d.session_id; addMsg('bot', d.reply, d.model + ' · ' + d.elapsed.toFixed(1) + 's'); }
+    else { sid = d.session_id || sid; addMsg('bot', d.reply, d.model + ' · ' + (d.elapsed ? d.elapsed.toFixed(1) + 's' : 'cloud')); }
   } catch (e) { wait.parentElement.remove(); const b = addMsg('bot', String(e)); b.classList.add('err'); }
   $('send').disabled = false; loadRecents(); scrollBottom();
 }
@@ -1112,7 +1169,21 @@ function copyCmd(btn){
     btn.textContent='Copied ✓'; setTimeout(()=>btn.textContent='Copy', 1500); });
 }
 async function loadConfig(){
-  const r = await fetch('/api/config'); const d = await r.json();
+  let d;
+  try {
+    const r = await fetch('/api/config');
+    if (r.ok) d = await r.json();
+  } catch(e){}
+  if (!d) {
+    d = { sections: [
+      { title: 'Cloud Models API Keys (สำหรับ WebApp บน Netlify)', items: [
+        { label: 'GROQ_API_KEY', key: 'GROQ_API_KEY', desc: 'gsk_... สำหรับ Groq (Llama-3.3)', secret: true, set: !!localStorage.getItem('GROQ_API_KEY'), value: localStorage.getItem('GROQ_API_KEY')||'' },
+        { label: 'GEMINI_API_KEY', key: 'GEMINI_API_KEY', desc: 'จาก aistudio.google.com สำหรับ Gemini', secret: true, set: !!localStorage.getItem('GEMINI_API_KEY'), value: localStorage.getItem('GEMINI_API_KEY')||'' },
+        { label: 'OPENROUTER_API_KEY', key: 'OPENROUTER_API_KEY', desc: 'sk-or-... สำหรับ OpenRouter', secret: true, set: !!localStorage.getItem('OPENROUTER_API_KEY'), value: localStorage.getItem('OPENROUTER_API_KEY')||'' },
+        { label: 'RNAI_IO_API_KEY', key: 'RNAI_IO_API_KEY', desc: 'rnai_sk_... จากโปรไฟล์ Rnai.io', secret: true, set: !!localStorage.getItem('RNAI_IO_API_KEY'), value: localStorage.getItem('RNAI_IO_API_KEY')||'' }
+      ]}
+    ]};
+  }
   let html = '';
   for (const sec of d.sections) {
     html += `<div class="sethead">${sec.title}</div>`;
@@ -1124,7 +1195,7 @@ async function loadConfig(){
           <div class="desc">${it.desc}</div>
         </div>
         <input id="in-${it.key}" type="${secret?'password':'text'}"
-               placeholder="${it.set ? (secret ? it.masked : it.value) : (it.placeholder||'ยังไม่ได้ตั้งค่า')}">
+               placeholder="${it.set ? (secret ? (it.masked || '••••••••') : it.value) : (it.placeholder||'ยังไม่ได้ตั้งค่า')}">
         <button class="save" onclick="saveKey('${it.key}')">บันทึก</button>
         <span id="ok-${it.key}"></span>
       </div>`;
@@ -1133,39 +1204,20 @@ async function loadConfig(){
   $('setlist').innerHTML = html;
   loadNetworkInfo();
 }
-async function loadNetworkInfo() {
-  try {
-    const net = await (await fetch('/api/network')).json();
-    let card = $('netCard');
-    if (!card) {
-      card = document.createElement('div');
-      card.id = 'netCard';
-      card.className = 'netcard';
-      $('setlist').appendChild(card);
-    }
-    card.innerHTML = `
-      <div style="font-weight:600;font-size:15px;margin-bottom:6px">📱 เปิดบนมือถือ / เครื่องอื่นในวง Wi-Fi</div>
-      <div style="font-size:13px;color:var(--sub);margin-bottom:12px">ใช้รันคำสั่ง <code>rnai ui --remote</code> ใน Terminal แล้วเปิด URL ด้านล่างนี้จากมือถือ:</div>
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
-        <input id="netUrl" readonly value="${net.lan_url}" style="font-family:monospace;font-size:13px;padding:8px 12px;border:1px solid var(--line);border-radius:8px;flex:1;background:var(--card)">
-        <button style="padding:8px 14px;border:1px solid var(--line);border-radius:8px;background:var(--card);font-size:13px;cursor:pointer" onclick="navigator.clipboard.writeText('${net.lan_url}');alert('คัดลอก URL แล้ว')">Copy</button>
-      </div>
-      <div style="font-size:12px;color:var(--faint);margin-bottom:8px">สแกน QR Code จากกล้องมือถือเพื่อเปิดใช้งานทันที:</div>
-      <div>
-        <img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(net.lan_url)}" alt="QR Code" style="width:160px;height:160px;border-radius:10px;border:1px solid var(--line);background:#fff;padding:6px">
-      </div>
-    `;
-  } catch(e){}
-}
+
 async function saveKey(key){
   const v = $('in-'+key).value.trim();
   if (!v) return;
-  const r = await fetch('/api/config', { method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({ key, value: v }) });
-  const d = await r.json();
-  if (d.ok) { $('ok-'+key).className='saved'; $('ok-'+key).textContent='✓ บันทึกแล้ว';
-    setTimeout(loadConfig, 900); }
-  else { $('ok-'+key).className='err'; $('ok-'+key).textContent=d.error||'ผิดพลาด'; }
+  try { localStorage.setItem(key, v); } catch(e){}
+  try {
+    const r = await fetch('/api/config', { method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ key, value: v }) });
+    const d = await r.json();
+    if (d.ok) { $('ok-'+key).className='saved'; $('ok-'+key).textContent='✓ บันทึกแล้ว';
+      setTimeout(loadConfig, 900); return; }
+  } catch(e) {}
+  $('ok-'+key).className='saved'; $('ok-'+key).textContent='✓ บันทึกในเบราว์เซอร์แล้ว';
+  setTimeout(loadConfig, 900);
 }
 loadRecents();
 </script>
