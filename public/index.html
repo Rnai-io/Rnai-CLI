@@ -913,35 +913,45 @@ async function delTask(id){ await fetch('/api/tasks/'+id, { method:'DELETE' }); 
 
 async function chatDirectCloud(model, text) {
   const t0 = performance.now();
+  const geminiKey = localStorage.getItem('GEMINI_API_KEY');
+  const groqKey = localStorage.getItem('GROQ_API_KEY');
+  const openrouterKey = localStorage.getItem('OPENROUTER_API_KEY');
+  const hfKey = localStorage.getItem('HF_API_KEY');
+
   if (model.startsWith('ollama')) {
     throw new Error('โมเดล Ollama เป็นโมเดลสำหรับรันบนคอมพิวเตอร์ของคุณ\n\n• หากเปิดผ่าน Netlify: กรุณาสลับโมเดลเป็น Hugging Face / Gemini / Groq ในมุมขวาบน\n• หากต้องการใช้ Ollama: เปิด Terminal ในเครื่องคอมพิวเตอร์แล้วรันคำสั่ง "rnai ui --remote"');
   }
-  if (model === 'gemini') {
-    const key = localStorage.getItem('GEMINI_API_KEY');
-    if (!key) throw new Error('กรุณากรอก GEMINI_API_KEY ในหน้า Settings (คลิกที่ปุ่ม 🔑 Login หรือ Settings ด้านบน)');
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+
+  if (model === 'gemini' || (!model.includes('groq') && !model.includes('openrouter') && !model.includes('hf') && geminiKey)) {
+    if (!geminiKey) throw new Error('กรุณากรอก GEMINI_API_KEY ในหน้า Settings (คลิกปุ่ม Settings ด้านบน)');
+    let res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ contents: [{ parts: [{ text }] }] })
     });
-    const data = await res.json();
+    let data = await res.json();
+    if (data.error && data.error.code === 404) {
+      res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ parts: [{ text }] }] })
+      });
+      data = await res.json();
+    }
     if (data.error) throw new Error(data.error.message || 'Gemini API Error');
     const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || '(ไม่มีคำตอบ)';
-    return { reply, model: 'Gemini 1.5 Flash', elapsed: (performance.now() - t0)/1000 };
-  } else if (model === 'groq') {
-    const key = localStorage.getItem('GROQ_API_KEY');
-    if (!key) throw new Error('กรุณากรอก GROQ_API_KEY ในหน้า Settings ก่อนใช้งาน');
+    return { reply, model: 'Gemini Flash', elapsed: (performance.now() - t0)/1000 };
+  } else if (model === 'groq' || (!model.includes('openrouter') && !model.includes('hf') && groqKey)) {
+    if (!groqKey) throw new Error('กรุณากรอก GROQ_API_KEY ในหน้า Settings ก่อนใช้งาน');
     const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${groqKey}` },
       body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages: [{ role: 'user', content: text }] })
     });
     const data = await res.json();
     if (data.error) throw new Error(data.error.message || 'Groq API Error');
     const reply = data.choices?.[0]?.message?.content || '(ไม่มีคำตอบ)';
     return { reply, model: 'Groq (llama-3.3-70b)', elapsed: (performance.now() - t0)/1000 };
-  } else if (model.includes('hf') || model.includes('huggingface')) {
-    const key = localStorage.getItem('HF_API_KEY') || '';
+  } else if (model.includes('hf') || model.includes('huggingface') || hfKey) {
+    const key = hfKey || '';
     const headers = { 'Content-Type': 'application/json' };
     if (key) headers['Authorization'] = `Bearer ${key}`;
     let reply = '';
@@ -966,8 +976,8 @@ async function chatDirectCloud(model, text) {
 
     if (!reply) throw new Error('Hugging Face Model กำลังอยู่ในสถานะสลีปหรือต้องใช้ HF_API_KEY\n\nกรุณากดรับ Token ฟรีที่ <a href="https://huggingface.co/settings/tokens" target="_blank" style="color:var(--brand-ink);font-weight:600">huggingface.co/settings/tokens 🔗</a> แล้วใส่ใน Settings');
     return { reply, model: 'HuggingFace (rnai-llm-v4.1-gguf)', elapsed: (performance.now() - t0)/1000 };
-  } else if (model === 'openrouter') {
-    const key = localStorage.getItem('OPENROUTER_API_KEY');
+  } else if (model === 'openrouter' || openrouterKey) {
+    const key = openrouterKey;
     if (!key) throw new Error('กรุณากรอก OPENROUTER_API_KEY ในหน้า Settings ก่อนใช้งาน');
     const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
@@ -979,37 +989,7 @@ async function chatDirectCloud(model, text) {
     const reply = data.choices?.[0]?.message?.content || '(ไม่มีคำตอบ)';
     return { reply, model: 'OpenRouter (llama-3.1-8b)', elapsed: (performance.now() - t0)/1000 };
   } else {
-    const key = localStorage.getItem('RNAI_IO_API_KEY');
-    try {
-      const res = await fetch('https://rnai-io.vercel.app/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': key ? `Bearer ${key}` : '' },
-        body: JSON.stringify({ message: text })
-      });
-      const data = await res.json();
-      if (data && !data.error) {
-        return { reply: data.text || data.reply || '(ไม่มีคำตอบ)', model: data.model || 'rnai-llm', elapsed: (performance.now() - t0)/1000 };
-      }
-    } catch(e) {}
-
-    // Fallback: Try HuggingFace Cloud Inference for rnai-llm v4.1
-    try {
-      const hfKey = localStorage.getItem('HF_API_KEY') || '';
-      const hfHeaders = { 'Content-Type': 'application/json' };
-      if (hfKey) hfHeaders['Authorization'] = `Bearer ${hfKey}`;
-      const hfRes = await fetch('https://api-inference.huggingface.co/models/naiguitarfolk/rnai-llm-v4.1-gguf/v1/chat/completions', {
-        method: 'POST',
-        headers: hfHeaders,
-        body: JSON.stringify({ model: 'naiguitarfolk/rnai-llm-v4.1-gguf', messages: [{ role: 'user', content: text }] })
-      });
-      const hfData = await hfRes.json();
-      const hfReply = hfData.choices?.[0]?.message?.content || hfData[0]?.generated_text;
-      if (hfReply) {
-        return { reply: hfReply, model: 'rnai-llm v4.1 (HuggingFace Cloud)', elapsed: (performance.now() - t0)/1000 };
-      }
-    } catch(e) {}
-
-    throw new Error('ไม่สามารถเชื่อมต่อ Rnai Cloud ได้ในขณะนี้\n\n• หากใช้งานผ่าน Netlify: กรุณาเลือกโมเดล Gemini / Groq / HuggingFace ในมุมขวาบน และใส่ API Key ใน Settings\n• หากต้องการใช้ Ollama / Local Agent: เปิด Terminal ในคอมพิวเตอร์ แล้วรันคำสั่ง "rnai ui --remote"');
+    throw new Error('ไม่พบ API Key ในหน้า Settings\n\n• กรุณากดปุ่ม 🔑 Login หรือ Settings ด้านบน เพื่อวาง API Key ของ Gemini / Groq / HuggingFace');
   }
 }
 
@@ -1213,6 +1193,11 @@ async function saveKey(key){
   const v = $('in-'+key).value.trim();
   if (!v) return;
   try { localStorage.setItem(key, v); } catch(e){}
+  if (key === 'GEMINI_API_KEY') $('model').value = 'gemini';
+  else if (key === 'GROQ_API_KEY') $('model').value = 'groq';
+  else if (key === 'OPENROUTER_API_KEY') $('model').value = 'openrouter';
+  else if (key === 'HF_API_KEY') $('model').value = 'hf/naiguitarfolk/rnai-llm-v4.1-gguf';
+
   try {
     const r = await fetch('/api/config', { method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ key, value: v }) });
@@ -1220,7 +1205,7 @@ async function saveKey(key){
     if (d.ok) { $('ok-'+key).className='saved'; $('ok-'+key).textContent='✓ บันทึกแล้ว';
       setTimeout(loadConfig, 900); return; }
   } catch(e) {}
-  $('ok-'+key).className='saved'; $('ok-'+key).textContent='✓ บันทึกในเบราว์เซอร์แล้ว';
+  $('ok-'+key).className='saved'; $('ok-'+key).textContent='✓ บันทึกในเบราว์เซอร์แล้ว (สลับโมเดลให้อัตโนมัติ)';
   setTimeout(loadConfig, 900);
 }
 loadRecents();
