@@ -1642,8 +1642,25 @@ class Handler(BaseHTTPRequestHandler):
             self._json({"error": f"{type(e).__name__}: {e}"}, 200)
 
 
+class ReuseAddressServer(ThreadingHTTPServer):
+    allow_reuse_address = True
+
+
 def serve(port: int = PORT, host: str = "127.0.0.1", open_browser: bool = True):
-    server = ThreadingHTTPServer((host, port), Handler)
+    server = None
+    for p in range(port, port + 10):
+        try:
+            server = ReuseAddressServer((host, p), Handler)
+            port = p
+            break
+        except OSError as e:
+            if e.errno == 48:
+                continue
+            raise e
+    if not server:
+        print(f"❌ ไม่สามารถเปิดเซิร์ฟเวอร์ได้: พอร์ต {PORT} ถึง {PORT+9} ถูกใช้งานอยู่แล้ว")
+        return
+
     setattr(server, "server_port", port)
     lan_ip = get_lan_ip()
     local_url = f"http://localhost:{port}"
@@ -1663,3 +1680,4 @@ def serve(port: int = PORT, host: str = "127.0.0.1", open_browser: bool = True):
         server.serve_forever()
     except KeyboardInterrupt:
         print("\nปิด UI แล้วครับ")
+
