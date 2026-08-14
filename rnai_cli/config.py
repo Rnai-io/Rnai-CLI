@@ -28,7 +28,9 @@ DEFAULTS = {
     "OPENROUTER_API_KEY": "",
     "OPENROUTER_BASE_URL": "https://openrouter.ai/api/v1",
     # "openrouter/free" = auto-router ของ OpenRouter เอง เลือกโมเดลฟรีที่เปิดอยู่ให้อัตโนมัติ
-    "OPENROUTER_MODEL": "openrouter/free",
+    "HF_API_KEY": "",
+    "HF_BASE_URL": "https://api-inference.huggingface.co/v1",
+    "HF_MODEL": "naiguitarfolk/rnai-llm-v4.1-gguf",
     "CEREBRAS_API_KEY": "",
     "CEREBRAS_BASE_URL": "https://api.cerebras.ai/v1",
     "CEREBRAS_MODEL": "gpt-oss-120b",

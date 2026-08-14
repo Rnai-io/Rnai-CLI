@@ -68,7 +68,9 @@ class Provider:
 # (คุยผ่าน Rnai.io ใช้เครดิต/quota ของบัญชี, endpoint Modal ตรงถูกล็อกด้วย --api-key แล้ว)
 PROVIDER_INFO = {
     "rnai":       (False, ""),
-    "ollama":     (False, "ติดตั้ง ollama.com แล้วรัน: ollama create rnai -f Modelfile"),
+    "ollama":     (False, "ติดตั้ง ollama.com แล้วรัน: ollama run hf.co/naiguitarfolk/rnai-llm-v4.1-gguf"),
+    "hf":         (False, "huggingface.co/settings/tokens (ฟรี)"),
+    "huggingface":(False, "huggingface.co/settings/tokens (ฟรี)"),
     "gemini":     (True, "aistudio.google.com"),
     "groq":       (True, "console.groq.com"),
     "openrouter": (True, "openrouter.ai/keys"),

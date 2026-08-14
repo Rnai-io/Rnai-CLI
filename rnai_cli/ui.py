@@ -457,6 +457,8 @@ nav .grow { flex:1; }
   <button id="acctBtn" onclick="openAccount()" title="บัญชี Rnai.io — เข้าสู่ระบบเพื่อดูเครดิต">🔌 เข้าสู่ระบบ Rnai.io</button>
   <button id="themebtn" onclick="toggleTheme()" title="สลับโหมดสว่าง/มืด">🌙</button>
   <select id="model">
+    <option value="ollama/hf.co/naiguitarfolk/rnai-llm-v4.1-gguf">Ollama: rnai-llm v4.1 GGUF (HuggingFace Direct)</option>
+    <option value="hf/naiguitarfolk/rnai-llm-v4.1-gguf">Hugging Face: rnai-llm v4.1 GGUF (Free Cloud)</option>
     <option value="ollama">Ollama: rnai-llm v4.1 (Local GGUF)</option>
     <option value="rnai">rnai-llm (Rnai.io Cloud)</option>
     <option value="gemini">Gemini</option>
@@ -1002,6 +1004,19 @@ async function chatDirectCloud(model, text) {
     if (data.error) throw new Error(data.error.message || 'Groq API Error');
     const reply = data.choices?.[0]?.message?.content || '(ไม่มีคำตอบ)';
     return { reply, model: 'Groq (llama-3.3-70b)', elapsed: (performance.now() - t0)/1000 };
+  } else if (model.includes('hf') || model.includes('huggingface')) {
+    const key = localStorage.getItem('HF_API_KEY') || '';
+    const headers = { 'Content-Type': 'application/json' };
+    if (key) headers['Authorization'] = `Bearer ${key}`;
+    const res = await fetch('https://api-inference.huggingface.co/models/naiguitarfolk/rnai-llm-v4.1-gguf/v1/chat/completions', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ model: 'naiguitarfolk/rnai-llm-v4.1-gguf', messages: [{ role: 'user', content: text }] })
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(typeof data.error === 'string' ? data.error : (data.error.message || 'Hugging Face API Error'));
+    const reply = data.choices?.[0]?.message?.content || data[0]?.generated_text || '(ไม่มีคำตอบ)';
+    return { reply, model: 'HuggingFace (rnai-llm-v4.1-gguf)', elapsed: (performance.now() - t0)/1000 };
   } else if (model === 'openrouter') {
     const key = localStorage.getItem('OPENROUTER_API_KEY');
     if (!key) throw new Error('กรุณาตั้งค่า OPENROUTER_API_KEY ในหน้า Settings ก่อนใช้งาน');
@@ -1181,6 +1196,7 @@ async function loadConfig(){
         { label: 'GROQ_API_KEY', key: 'GROQ_API_KEY', desc: 'gsk_... สำหรับ Groq (Llama-3.3)', secret: true, set: !!localStorage.getItem('GROQ_API_KEY'), value: localStorage.getItem('GROQ_API_KEY')||'' },
         { label: 'GEMINI_API_KEY', key: 'GEMINI_API_KEY', desc: 'จาก aistudio.google.com สำหรับ Gemini', secret: true, set: !!localStorage.getItem('GEMINI_API_KEY'), value: localStorage.getItem('GEMINI_API_KEY')||'' },
         { label: 'OPENROUTER_API_KEY', key: 'OPENROUTER_API_KEY', desc: 'sk-or-... สำหรับ OpenRouter', secret: true, set: !!localStorage.getItem('OPENROUTER_API_KEY'), value: localStorage.getItem('OPENROUTER_API_KEY')||'' },
+        { label: 'HF_API_KEY', key: 'HF_API_KEY', desc: 'hf_... ฟรีจาก huggingface.co สำหรับ rnai-llm v4.1 GGUF', secret: true, set: !!localStorage.getItem('HF_API_KEY'), value: localStorage.getItem('HF_API_KEY')||'' },
         { label: 'RNAI_IO_API_KEY', key: 'RNAI_IO_API_KEY', desc: 'rnai_sk_... จากโปรไฟล์ Rnai.io', secret: true, set: !!localStorage.getItem('RNAI_IO_API_KEY'), value: localStorage.getItem('RNAI_IO_API_KEY')||'' }
       ]}
     ]};
@@ -1288,6 +1304,7 @@ CONFIG_SECTIONS = [
         ("GROQ_API_KEY", "Groq", 'ฟรีที่ <a href="https://console.groq.com" target="_blank">console.groq.com</a> — โมเดลเร็ว + ตัวเลือก planner', True, "gsk_..."),
         ("GEMINI_API_KEY", "Gemini", 'ฟรีที่ <a href="https://aistudio.google.com" target="_blank">aistudio.google.com</a> — planner หลักของ agent', True, "key_xxx"),
         ("OPENROUTER_API_KEY", "OpenRouter", 'ฟรีที่ <a href="https://openrouter.ai/keys" target="_blank">openrouter.ai/keys</a> — โมเดลฟรีหลายสิบตัว', True, "sk-or-..."),
+        ("HF_API_KEY", "Hugging Face", 'ฟรีที่ <a href="https://huggingface.co/settings/tokens" target="_blank">huggingface.co/settings/tokens</a> — รัน rnai-llm v4.1 GGUF', True, "hf_..."),
         ("CEREBRAS_API_KEY", "Cerebras", 'ที่ <a href="https://cloud.cerebras.ai" target="_blank">cloud.cerebras.ai</a>', True, "csk-..."),
         ("MISTRAL_API_KEY", "Mistral", 'ที่ <a href="https://console.mistral.ai" target="_blank">console.mistral.ai</a>', True, ""),
         ("GITHUB_API_KEY", "GitHub Models", 'ใช้ GitHub PAT จาก <a href="https://github.com/settings/tokens" target="_blank">settings/tokens</a>', True, "ghp_..."),
