@@ -1014,7 +1014,11 @@ async function chatDirectCloud(model, text) {
 
   // 1. GEMINI
   if (model === 'gemini') {
-    if (!geminiKey) throw new Error('กรุณากรอก GEMINI_API_KEY ในหน้า Settings (คลิกปุ่ม 🔑 Login หรือ Settings ด้านบน)');
+    if (!geminiKey) {
+      if (groqKey) return chatDirectCloud('groq', text);
+      if (openrouterKey) return chatDirectCloud('openrouter', text);
+      throw new Error('กรุณากรอก GEMINI_API_KEY ในหน้า Settings (คลิกปุ่ม 🔑 Login หรือ Settings ด้านบน เพื่อรับ Key ฟรีจาก <a href="https://aistudio.google.com/app/apikey" target="_blank">aistudio.google.com 🔗</a>)');
+    }
     const modelsToTry = ['gemini-1.5-flash', 'gemini-2.5-flash', 'gemini-1.5-pro'];
     let reply = '', lastError = '';
     for (const m of modelsToTry) {
@@ -1032,8 +1036,12 @@ async function chatDirectCloud(model, text) {
         }
       } catch(e) { lastError = String(e); }
     }
-    if (!reply) throw new Error(lastError || 'Gemini API Error');
-    return { reply, model: 'Gemini Flash', elapsed: (performance.now() - t0)/1000 };
+    if (reply) return { reply, model: 'Gemini Flash', elapsed: (performance.now() - t0)/1000 };
+    
+    // Auto Fallback if Gemini Key is invalid
+    if (groqKey) return chatDirectCloud('groq', text);
+    if (openrouterKey) return chatDirectCloud('openrouter', text);
+    throw new Error('GEMINI_API_KEY ไม่ถูกต้องหรือหมดอายุ — <a href="https://aistudio.google.com/app/apikey" target="_blank">กดรับ Key ใหม่ที่นี่ 🔗</a>');
   }
 
   // 2. GROQ
@@ -1089,8 +1097,12 @@ async function chatDirectCloud(model, text) {
       } catch(e) { lastError = String(e); }
     }
 
-    if (!reply) throw new Error('Hugging Face ต้องการ HF_API_KEY หรือโมเดลกำลังสลีป\n\nกรุณากดรับ Token ฟรีที่ <a href="https://huggingface.co/settings/tokens" target="_blank" style="color:var(--brand-ink);font-weight:600">huggingface.co/settings/tokens 🔗</a> แล้วใส่ใน Settings');
-    return { reply, model: 'HuggingFace Cloud', elapsed: (performance.now() - t0)/1000 };
+    if (reply) return { reply, model: 'HuggingFace Cloud', elapsed: (performance.now() - t0)/1000 };
+
+    if (groqKey) return chatDirectCloud('groq', text);
+    if (openrouterKey) return chatDirectCloud('openrouter', text);
+
+    throw new Error('Hugging Face ต้องการ HF_API_KEY\n\nกรุณากดรับ Token ฟรีที่ <a href="https://huggingface.co/settings/tokens" target="_blank" style="color:var(--brand-ink);font-weight:600">huggingface.co/settings/tokens 🔗</a> แล้วใส่ใน Settings');
   }
 
   // 4. OPENROUTER
@@ -1129,9 +1141,9 @@ async function chatDirectCloud(model, text) {
   }
 
   // 5. RNAI (Default Auto Fallback)
-  if (geminiKey) return chatDirectCloud('gemini', text);
   if (groqKey) return chatDirectCloud('groq', text);
   if (openrouterKey) return chatDirectCloud('openrouter', text);
+  if (geminiKey) return chatDirectCloud('gemini', text);
   if (hfKey) return chatDirectCloud('hf', text);
 
   throw new Error('ไม่พบ API Key ในหน้า Settings\n\n• กรุณากดปุ่ม 🔑 Login หรือ Settings ด้านบน เพื่อรับ API Key ฟรีของ Gemini / Groq / OpenRouter แล้วนำมาใส่ในช่อง');
