@@ -1071,7 +1071,7 @@ async function runTaskNow(id, btn){ btn.textContent = 'กำลังรัน.
   setTimeout(()=>{ btn.textContent='▶ รันเลย'; btn.disabled=false; loadTaskList(); }, 4000); }
 async function delTask(id){ await fetch('/api/tasks/'+id, { method:'DELETE' }); loadTaskList(); }
 
-async function chatDirectCloud(model, text, fallbackReason = '') {
+async function chatDirectCloud(model, text) {
   const t0 = performance.now();
   const geminiKey = localStorage.getItem('GEMINI_API_KEY');
   const groqKey = localStorage.getItem('GROQ_API_KEY');
@@ -1082,14 +1082,10 @@ async function chatDirectCloud(model, text, fallbackReason = '') {
     throw new Error('โมเดล Ollama เป็นโมเดลสำหรับรันบนคอมพิวเตอร์ของคุณ\\n\\n• หากเปิดผ่าน Netlify: กรุณาสลับโมเดลเป็น Hugging Face / Gemini / Groq ในมุมขวาบน\\n• หากต้องการใช้ Ollama: เปิด Terminal ในเครื่องคอมพิวเตอร์แล้วรันคำสั่ง "rnai ui --remote"');
   }
 
-  const label = (mName) => fallbackReason ? `${mName} (สลับสแตนด์บายเนื่องจาก: ${fallbackReason})` : mName;
-
   // 1. GEMINI
   if (model === 'gemini') {
     if (!geminiKey) {
-      if (groqKey) return chatDirectCloud('groq', text, 'Gemini ยังไม่ได้กรอก GEMINI_API_KEY');
-      if (openrouterKey) return chatDirectCloud('openrouter', text, 'Gemini ยังไม่ได้กรอก GEMINI_API_KEY');
-      throw new Error('กรุณากรอก GEMINI_API_KEY ในหน้า Settings (คลิกปุ่ม 🔑 Login หรือ Settings ด้านบน เพื่อรับ Key ฟรีจาก <a href="https://aistudio.google.com/app/apikey" target="_blank">aistudio.google.com 🔗</a>)');
+      throw new Error('⚠️ ต้องการ GEMINI_API_KEY ในหน้า Settings\\n\\nกรุณากดรับ Key ฟรีที่ <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color:var(--brand-ink);font-weight:600">aistudio.google.com/app/apikey 🔗</a> แล้วนำมาวางใน Settings');
     }
     const modelsToTry = ['gemini-1.5-flash', 'gemini-2.5-flash', 'gemini-1.5-pro'];
     let reply = '', lastError = '';
@@ -1108,16 +1104,15 @@ async function chatDirectCloud(model, text, fallbackReason = '') {
         }
       } catch(e) { lastError = String(e); }
     }
-    if (reply) return { reply, model: label('Gemini Flash'), elapsed: (performance.now() - t0)/1000 };
-
-    if (groqKey) return chatDirectCloud('groq', text, 'Gemini API Key ไม่ถูกต้องหรือหมดอายุ');
-    if (openrouterKey) return chatDirectCloud('openrouter', text, 'Gemini API Key ไม่ถูกต้องหรือหมดอายุ');
-    throw new Error('GEMINI_API_KEY ไม่ถูกต้องหรือหมดอายุ — <a href="https://aistudio.google.com/app/apikey" target="_blank">กดรับ Key ใหม่ที่นี่ 🔗</a>');
+    if (reply) return { reply, model: 'Gemini Flash', elapsed: (performance.now() - t0)/1000 };
+    throw new Error('⚠️ GEMINI_API_KEY ไม่ถูกต้องหรือหมดอายุ (' + (lastError || 'HTTP Error') + ')\\n\\nกรุณากดรับ Key ฟรีใหม่ที่ <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color:var(--brand-ink);font-weight:600">aistudio.google.com/app/apikey 🔗</a>');
   }
 
   // 2. GROQ
   if (model === 'groq') {
-    if (!groqKey) throw new Error('กรุณากรอก GROQ_API_KEY ในหน้า Settings ก่อนใช้งาน (สมัครฟรีที่ console.groq.com/keys)');
+    if (!groqKey) {
+      throw new Error('⚠️ ต้องการ GROQ_API_KEY ในหน้า Settings\\n\\nกรุณากดรับ Key ฟรีที่ <a href="https://console.groq.com/keys" target="_blank" style="color:var(--brand-ink);font-weight:600">console.groq.com/keys 🔗</a> แล้วนำมาวางใน Settings');
+    }
     const groqModels = ['llama-3.3-70b-versatile', 'llama3-8b-8192', 'mixtral-8x7b-32768'];
     let reply = '', lastError = '';
     for (const gm of groqModels) {
@@ -1136,14 +1131,16 @@ async function chatDirectCloud(model, text, fallbackReason = '') {
         }
       } catch(e) { lastError = String(e); }
     }
-    if (!reply) throw new Error(lastError || 'Groq API Error — ตรวจสอบ GROQ_API_KEY ใน Settings');
-    return { reply, model: label('Groq (Llama-3.3)'), elapsed: (performance.now() - t0)/1000 };
+    if (reply) return { reply, model: 'Groq (Llama-3.3)', elapsed: (performance.now() - t0)/1000 };
+    throw new Error('⚠️ GROQ_API_KEY ไม่ถูกต้องหรือหมดอายุ (' + (lastError || 'HTTP Error') + ')\\n\\nกรุณากดรับ Key ฟรีใหม่ที่ <a href="https://console.groq.com/keys" target="_blank" style="color:var(--brand-ink);font-weight:600">console.groq.com/keys 🔗</a>');
   }
 
   // 3. HUGGING FACE
   if (model.includes('hf') || model.includes('huggingface')) {
-    const headers = { 'Content-Type': 'application/json' };
-    if (hfKey) headers['Authorization'] = `Bearer ${hfKey}`;
+    if (!hfKey) {
+      throw new Error('⚠️ ต้องการ HF_API_KEY ในหน้า Settings สำหรับเรียกใช้โมเดล Hugging Face\\n\\nกรุณากดรับ Token ฟรีที่ <a href="https://huggingface.co/settings/tokens" target="_blank" style="color:var(--brand-ink);font-weight:600">huggingface.co/settings/tokens 🔗</a> แล้วนำมาวางใน Settings');
+    }
+    const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${hfKey}` };
     const hfModels = [
       'Qwen/Qwen2.5-Coder-32B-Instruct',
       'meta-llama/Llama-3.2-3B-Instruct',
@@ -1163,23 +1160,20 @@ async function chatDirectCloud(model, text, fallbackReason = '') {
           reply = data.choices[0].message.content;
           break;
         } else if (data.error) {
-          lastError = typeof data.error === 'string' ? data.error : data.error.message;
+          lastError = typeof data.error === 'string' ? data.error : (data.error.message || JSON.stringify(data.error));
         }
       } catch(e) { lastError = String(e); }
     }
 
-    if (reply) return { reply, model: label('HuggingFace Cloud'), elapsed: (performance.now() - t0)/1000 };
-
-    const hfReason = 'HuggingFace สลีปหรือต้องใช้ HF_API_KEY (รับ Token ฟรีใน Settings)';
-    if (groqKey) return chatDirectCloud('groq', text, hfReason);
-    if (openrouterKey) return chatDirectCloud('openrouter', text, hfReason);
-
-    throw new Error('Hugging Face ต้องการ HF_API_KEY\\n\\nกรุณากดรับ Token ฟรีที่ <a href="https://huggingface.co/settings/tokens" target="_blank" style="color:var(--brand-ink);font-weight:600">huggingface.co/settings/tokens 🔗</a> แล้วใส่ใน Settings');
+    if (reply) return { reply, model: 'HuggingFace Cloud', elapsed: (performance.now() - t0)/1000 };
+    throw new Error('⚠️ ไม่สามารถเรียก Hugging Face ได้ (' + (lastError || 'Token ไม่ถูกต้องหรือโมเดลสลีป') + ')\\n\\nกรุณาตรวจสอบ HF_API_KEY หรือรับ Token ฟรีใหม่ที่ <a href="https://huggingface.co/settings/tokens" target="_blank" style="color:var(--brand-ink);font-weight:600">huggingface.co/settings/tokens 🔗</a>');
   }
 
   // 4. OPENROUTER
   if (model === 'openrouter') {
-    if (!openrouterKey) throw new Error('กรุณากรอก OPENROUTER_API_KEY ในหน้า Settings ก่อนใช้งาน (สมัครฟรีที่ openrouter.ai/keys)');
+    if (!openrouterKey) {
+      throw new Error('⚠️ ต้องการ OPENROUTER_API_KEY ในหน้า Settings\\n\\nกรุณากดรับ Key ฟรีที่ <a href="https://openrouter.ai/keys" target="_blank" style="color:var(--brand-ink);font-weight:600">openrouter.ai/keys 🔗</a> แล้วนำมาวางใน Settings');
+    }
     const orModels = [
       'openrouter/auto',
       'deepseek/deepseek-r1:free',
@@ -1208,11 +1202,11 @@ async function chatDirectCloud(model, text, fallbackReason = '') {
         }
       } catch(e) { lastError = String(e); }
     }
-    if (!reply) throw new Error(lastError || 'OpenRouter API Error — ตรวจสอบ OPENROUTER_API_KEY ใน Settings');
-    return { reply, model: label('OpenRouter Free'), elapsed: (performance.now() - t0)/1000 };
+    if (reply) return { reply, model: 'OpenRouter Free', elapsed: (performance.now() - t0)/1000 };
+    throw new Error('⚠️ OPENROUTER_API_KEY ไม่ถูกต้องหรือหมดอายุ (' + (lastError || 'HTTP Error') + ')\\n\\nกรุณารับ Key ฟรีที่ <a href="https://openrouter.ai/keys" target="_blank" style="color:var(--brand-ink);font-weight:600">openrouter.ai/keys 🔗</a>');
   }
 
-  // 5. RNAI.IO CLOUD API
+  // 5. RNAI.IO CLOUD API (Default / Auto Selection)
   const rnaiKey = localStorage.getItem('RNAI_IO_API_KEY');
   if (rnaiKey) {
     try {
@@ -1223,19 +1217,18 @@ async function chatDirectCloud(model, text, fallbackReason = '') {
       });
       const data = await res.json();
       if (data && data.text) {
-        return { reply: data.text, model: label('rnai-llm v4.1 (Rnai.io Cloud)'), elapsed: (performance.now() - t0)/1000 };
+        return { reply: data.text, model: 'rnai-llm v4.1 (Rnai.io Cloud)', elapsed: (performance.now() - t0)/1000 };
       }
     } catch(e) {}
   }
 
-  // 6. DEFAULT AUTO FALLBACK TO WORKING CLOUD ENGINE
-  const defaultReason = fallbackReason || 'ยังไม่ได้ล็อกอิน Rnai.io หรือไม่ได้ตั้งค่า API Key';
-  if (groqKey) return chatDirectCloud('groq', text, defaultReason);
-  if (openrouterKey) return chatDirectCloud('openrouter', text, defaultReason);
-  if (geminiKey) return chatDirectCloud('gemini', text, defaultReason);
-  if (hfKey) return chatDirectCloud('hf', text, defaultReason);
+  // Auto select any working key if model is set to default
+  if (groqKey) return chatDirectCloud('groq', text);
+  if (geminiKey) return chatDirectCloud('gemini', text);
+  if (openrouterKey) return chatDirectCloud('openrouter', text);
+  if (hfKey) return chatDirectCloud('hf', text);
 
-  throw new Error('ไม่พบ API Key ในหน้า Settings\\n\\n• กรุณากดปุ่ม 🔑 Login หรือ Settings ด้านบน เพื่อวาง API Key ของ Gemini / Groq / OpenRouter');
+  throw new Error('ไม่พบ API Key ในหน้า Settings\\n\\n• กรุณากดปุ่ม 🔑 Login หรือ Settings ด้านบน เพื่อวาง API Key ของ Gemini / Groq / HuggingFace');
 }
 
 async function send() {
