@@ -1136,9 +1136,12 @@ async function chatDirectCloud(model, text) {
     throw new Error('⚠️ OPENROUTER_API_KEY ไม่ถูกต้องหรือหมดอายุ (' + (lastError || 'HTTP Error') + ')\n\nกรุณารับ Key ฟรีที่ <a href="https://openrouter.ai/keys" target="_blank" style="color:var(--brand-ink);font-weight:600">openrouter.ai/keys 🔗</a>');
   }
 
-  // 5. RNAI.IO CLOUD API (Default / Auto Selection)
-  const rnaiKey = localStorage.getItem('RNAI_IO_API_KEY');
-  if (rnaiKey) {
+  // 5. RNAI.IO CLOUD API
+  if (model === 'rnai') {
+    const rnaiKey = localStorage.getItem('RNAI_IO_API_KEY');
+    if (!rnaiKey) {
+      throw new Error('⚠️ ต้องการเข้าสู่ระบบ Rnai.io หรือใส่ RNAI_IO_API_KEY ใน Settings\n\nกรุณากดปุ่ม 🔑 Login เพื่อเข้าสู่ระบบ Rnai.io หรือนำคีย์ rnai_sk_... ที่ได้มาวางในช่อง RNAI_IO_API_KEY ในหน้า Settings');
+    }
     try {
       const res = await fetch('https://rnai-io.vercel.app/api/rnai/chat', {
         method: 'POST',
@@ -1148,8 +1151,13 @@ async function chatDirectCloud(model, text) {
       const data = await res.json();
       if (data && data.text) {
         return { reply: data.text, model: 'rnai-llm v4.1 (Rnai.io Cloud)', elapsed: (performance.now() - t0)/1000 };
+      } else if (data && data.error) {
+        throw new Error(data.error);
       }
-    } catch(e) {}
+    } catch(e) {
+      if (e.message && !e.message.includes('fetch')) throw e;
+    }
+    throw new Error('⚠️ ไม่สามารถเรียก Rnai.io Cloud ได้ในขณะนี้\n\nกรุณาตรวจสอบคีย์ RNAI_IO_API_KEY หรือลองกดปุ่ม 🔑 Login เพื่อเข้าสู่ระบบใหม่อีกครั้ง');
   }
 
   // Auto select any working key if model is set to default
