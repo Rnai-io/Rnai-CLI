@@ -1037,14 +1037,36 @@ async function chatDirectCloud(model, text) {
     return { reply, model: 'OpenRouter (llama-3.1-8b)', elapsed: (performance.now() - t0)/1000 };
   } else {
     const key = localStorage.getItem('RNAI_IO_API_KEY');
-    const res = await fetch('https://rnai-io.vercel.app/api/chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': key ? `Bearer ${key}` : '' },
-      body: JSON.stringify({ message: text })
-    });
-    const data = await res.json();
-    if (data.error) throw new Error(data.error || 'Rnai.io API Error');
-    return { reply: data.text || data.reply || '(ไม่มีคำตอบ)', model: data.model || 'rnai-llm', elapsed: (performance.now() - t0)/1000 };
+    try {
+      const res = await fetch('https://rnai-io.vercel.app/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': key ? `Bearer ${key}` : '' },
+        body: JSON.stringify({ message: text })
+      });
+      const data = await res.json();
+      if (data && !data.error) {
+        return { reply: data.text || data.reply || '(ไม่มีคำตอบ)', model: data.model || 'rnai-llm', elapsed: (performance.now() - t0)/1000 };
+      }
+    } catch(e) {}
+
+    // Fallback: Try HuggingFace Cloud Inference for rnai-llm v4.1
+    try {
+      const hfKey = localStorage.getItem('HF_API_KEY') || '';
+      const hfHeaders = { 'Content-Type': 'application/json' };
+      if (hfKey) hfHeaders['Authorization'] = `Bearer ${hfKey}`;
+      const hfRes = await fetch('https://api-inference.huggingface.co/models/naiguitarfolk/rnai-llm-v4.1-gguf/v1/chat/completions', {
+        method: 'POST',
+        headers: hfHeaders,
+        body: JSON.stringify({ model: 'naiguitarfolk/rnai-llm-v4.1-gguf', messages: [{ role: 'user', content: text }] })
+      });
+      const hfData = await hfRes.json();
+      const hfReply = hfData.choices?.[0]?.message?.content || hfData[0]?.generated_text;
+      if (hfReply) {
+        return { reply: hfReply, model: 'rnai-llm v4.1 (HuggingFace Cloud)', elapsed: (performance.now() - t0)/1000 };
+      }
+    } catch(e) {}
+
+    throw new Error('ไม่สามารถเชื่อมต่อ Rnai Cloud ได้ในขณะนี้\\n\\n• หากใช้งานผ่าน Netlify: กรุณาเลือกโมเดล Gemini / Groq / HuggingFace ในมุมขวาบน และใส่ API Key ใน Settings\\n• หากต้องการใช้ Ollama / Local Agent: เปิด Terminal ในคอมพิวเตอร์ แล้วรันคำสั่ง "rnai ui --remote"');
   }
 }
 
