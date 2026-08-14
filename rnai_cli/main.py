@@ -208,12 +208,17 @@ def agent(
 # ── ui / history ────────────────────────────────────────────────────────────
 @app.command()
 def ui(
-    port: int = typer.Option(8765, "--port"),
+    port: int = typer.Option(8765, "--port", "-p", help="พอร์ต HTTP Server"),
+    host: str = typer.Option("127.0.0.1", "--host", "-h", help="IP address ที่ฟัง (ใช้ 0.0.0.0 สำหรับให้มือถือใน Wi-Fi เข้าได้)"),
+    remote: bool = typer.Option(False, "--remote", "-r", help="เปิดให้มือถือและอุปกรณ์อื่นในวง Wi-Fi เข้าถึง WebApp ได้ (bind 0.0.0.0)"),
     no_browser: bool = typer.Option(False, "--no-browser", help="ไม่เปิดเบราว์เซอร์อัตโนมัติ"),
 ):
-    """เปิด Web UI บนเครื่อง — Recents + แชทต่อเนื่อง (Cowork หน้าแรก)"""
+    """เปิด Web UI สำหรับมือถือและเว็บเบราว์เซอร์ — รองรับ PWA, Cowork & Agent"""
     from .ui import serve
-    serve(port=port, open_browser=not no_browser)
+    if remote:
+        host = "0.0.0.0"
+    serve(port=port, host=host, open_browser=not no_browser)
+
 
 
 @app.command("history")

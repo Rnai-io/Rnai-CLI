@@ -1,0 +1,136 @@
+{
+  "$comment": "สัญญาเครื่องมือ v1 ของ rnai-llm-v4.1 — แหล่งความจริงเดียวที่ Rnai-Cli, rnai-platform และการเทรนอ้างถึง ห้ามเพิ่มเครื่องมือหลังส่งผู้ทรงคุณวุฒิตามข้อ 3.1.2 (เงื่อนไข C1) — คำอธิบายใน tools[] ตั้งใจเขียนสั้นเพราะถูกส่งเข้า context ทุกตัวอย่าง กติกาเชิงพฤติกรรมอยู่ใน TOOLS_PROMPT_APPEND ของ common.py ไม่ซ้ำที่นี่",
+  "version": "1.1.0",
+  "locked_before_expert_review": true,
+  "forbidden_in_research_build": [
+    "web_search",
+    "explain_content",
+    "summarize_document",
+    "write_draft",
+    "code_execution"
+  ],
+  "host_guards": {
+    "max_tool_calls_per_turn": 2,
+    "reject_when": [
+      "tool name not in tools[]",
+      "search_resources.learner_query_attempted == false",
+      "save_learning_goal.learner_authored == false",
+      "save_reflection.learner_authored == false",
+      "log_progress.learner_reported == false",
+      "top_k exceeds cap for current fading_level"
+    ],
+    "top_k_cap_by_fading_level": { "L1": 3, "L2": 2, "L3": 1 },
+    "log_fields": ["timestamp", "learner_id_hashed", "tool", "arguments", "rationale", "fading_level", "accepted", "reject_reason"]
+  },
+  "tools": [
+    {
+      "type": "function",
+      "function": {
+        "name": "search_resources",
+        "description": "ค้นรายการแหล่งจากคลังปิด คืนรายชื่อแหล่ง ไม่คืนเนื้อหา",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "query": { "type": "string", "description": "คำค้นที่เจาะจง" },
+            "resource_type": {
+              "type": "string",
+              "enum": ["course_material", "study_guide", "self_assessment", "library_database", "thai_journal", "thesis_archive", "university_channel", "person"]
+            },
+            "learner_query_attempted": { "type": "boolean", "description": "ผู้เรียนลองค้นเองแล้ว ต้องเป็น true" },
+            "rationale": { "type": "string", "description": "เหตุผล เขียนให้ผู้เรียนอ่านเข้าใจ" },
+            "top_k": { "type": "integer", "minimum": 1, "maximum": 3 }
+          },
+          "required": ["query", "learner_query_attempted", "rationale"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "get_resource_detail",
+        "description": "ข้อมูลบรรณานุกรมและช่องทางเข้าถึงของแหล่งที่ค้นเจอแล้ว",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "resource_id": { "type": "string", "description": "รหัสจากผลค้นในบทสนทนานี้เท่านั้น" },
+            "rationale": { "type": "string" }
+          },
+          "required": ["resource_id", "rationale"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "get_learner_state",
+        "description": "สัปดาห์ที่ ระดับ fading เป้าที่ตั้งไว้ และความก้าวหน้าล่าสุด",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "rationale": { "type": "string" }
+          },
+          "required": ["rationale"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "save_learning_goal",
+        "description": "บันทึกเป้าที่ผู้เรียนกำหนดเอง",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "goal_text": { "type": "string", "description": "ตามถ้อยคำของผู้เรียน" },
+            "component": { "type": "string", "enum": ["K1", "K2", "K3", "K4", "K5"] },
+            "measurable_criterion": { "type": "string", "description": "เกณฑ์ที่ผู้เรียนใช้ตัดสินว่าสำเร็จ" },
+            "target_week": { "type": "integer", "minimum": 1, "maximum": 12 },
+            "learner_authored": { "type": "boolean", "description": "ต้องเป็น true" },
+            "rationale": { "type": "string" }
+          },
+          "required": ["goal_text", "measurable_criterion", "learner_authored", "rationale"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "log_progress",
+        "description": "บันทึกความก้าวหน้าตามที่ผู้เรียนรายงาน",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "activity": { "type": "string" },
+            "evidence_type": {
+              "type": "string",
+              "enum": ["self_assessment_score", "units_read", "exercise_done", "recall_attempt", "study_session", "other"]
+            },
+            "value": { "type": "string", "description": "ค่าที่ผู้เรียนรายงาน เช่น 12/20" },
+            "condition": { "type": "string", "description": "เงื่อนไข เช่น ปิดหนังสือ เว้นสองวัน จำเป็นต่อการเทียบข้ามครั้ง" },
+            "learner_reported": { "type": "boolean", "description": "ต้องเป็น true" },
+            "rationale": { "type": "string" }
+          },
+          "required": ["activity", "evidence_type", "value", "learner_reported", "rationale"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "save_reflection",
+        "description": "บันทึกการประเมินตนเองและสิ่งที่ผู้เรียนจะปรับรอบหน้า",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "what_worked": { "type": "string" },
+            "what_to_change": { "type": "string", "description": "เจาะจงพอที่จะลงมือได้" },
+            "next_component": { "type": "string", "enum": ["K1", "K2", "K3", "K4", "K5"] },
+            "learner_authored": { "type": "boolean", "description": "ต้องเป็น true" },
+            "rationale": { "type": "string" }
+          },
+          "required": ["what_worked", "what_to_change", "learner_authored", "rationale"]
+        }
+      }
+    }
+  ]
+}
