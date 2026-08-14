@@ -720,37 +720,49 @@ async function sendAgent(text) {
   const stepsDiv = document.createElement('div'); stepsDiv.className = 'steps';
   stepsDiv.innerHTML = '<span class="tl">🛠 agent เริ่มทำงาน...</span>';
   $('thread').appendChild(stepsDiv); scrollBottom();
-  const r = await fetch('/api/agent', { method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({ session_id: sid, message: text }) });
-  const d = await r.json();
-  if (d.error) { stepsDiv.remove(); const b = addMsg('bot', d.error); b.classList.add('err');
-    $('send').disabled = false; return; }
-  sid = d.session_id;
-  let apDiv = null, shown = 0;
-  const poll = setInterval(async () => {
-    const s = await (await fetch('/api/agent/status?id=' + d.job_id)).json();
-    while (shown < s.steps.length) {
-      const st = s.steps[shown++];
-      const line = document.createElement('div');
-      line.className = st.kind === 'tool' ? 'tl' : 'rs';
-      line.textContent = (st.kind === 'tool' ? '🔧 ' : '   ↳ ') + st.text;
-      stepsDiv.appendChild(line); scrollBottom();
-    }
-    if (s.pending && !apDiv) {
-      apDiv = document.createElement('div'); apDiv.className = 'approvebox';
-      apDiv.innerHTML = `<div class="ttl">⚠️ agent ขออนุญาต: ${esc(s.pending.title)}</div>
-        <pre>${esc(s.pending.preview||'')}</pre>
-        <button class="ap-ok" onclick="approve('${d.job_id}',true,this)">อนุญาต</button>
-        <button class="ap-no" onclick="approve('${d.job_id}',false,this)">ปฏิเสธ</button>`;
-      $('thread').appendChild(apDiv); scrollBottom();
-    }
-    if (!s.pending && apDiv) { apDiv.remove(); apDiv = null; }
-    if (s.status !== 'running') {
-      clearInterval(poll); if (apDiv) apDiv.remove();
-      addMsg('bot', s.answer, 'agent'); $('send').disabled = false;
-      loadRecents(); scrollBottom();
-    }
-  }, 1000);
+  try {
+    const r = await fetch('/api/agent', { method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ session_id: sid, message: text }) });
+    if (!r.ok) throw new Error('ไม่พบเซิร์ฟเวอร์ Local Agent');
+    const d = await r.json();
+    if (d.error) { stepsDiv.remove(); const b = addMsg('bot', d.error); b.classList.add('err');
+      $('send').disabled = false; return; }
+    sid = d.session_id;
+    let apDiv = null, shown = 0;
+    const poll = setInterval(async () => {
+      try {
+        const s = await (await fetch('/api/agent/status?id=' + d.job_id)).json();
+        while (shown < s.steps.length) {
+          const st = s.steps[shown++];
+          const line = document.createElement('div');
+          line.className = st.kind === 'tool' ? 'tl' : 'rs';
+          line.textContent = (st.kind === 'tool' ? '🔧 ' : '   ↳ ') + st.text;
+          stepsDiv.appendChild(line); scrollBottom();
+        }
+        if (s.pending && !apDiv) {
+          apDiv = document.createElement('div'); apDiv.className = 'approvebox';
+          apDiv.innerHTML = `<div class="ttl">⚠️ agent ขออนุญาต: ${esc(s.pending.title)}</div>
+            <pre>${esc(s.pending.preview||'')}</pre>
+            <button class="ap-ok" onclick="approve('${d.job_id}',true,this)">อนุญาต</button>
+            <button class="ap-no" onclick="approve('${d.job_id}',false,this)">ปฏิเสธ</button>`;
+          $('thread').appendChild(apDiv); scrollBottom();
+        }
+        if (!s.pending && apDiv) { apDiv.remove(); apDiv = null; }
+        if (s.status !== 'running') {
+          clearInterval(poll); if (apDiv) apDiv.remove();
+          addMsg('bot', s.answer, 'agent'); $('send').disabled = false;
+          loadRecents(); scrollBottom();
+        }
+      } catch(e) { clearInterval(poll); }
+    }, 1000);
+  } catch(e) {
+    stepsDiv.remove();
+    const b = addMsg('bot', '⚠️ โหมด Agent (Cowork) เป็นโหมดที่ต้องรันคำสั่งและจัดการไฟล์ในคอมพิวเตอร์ของคุณ\\n\\n'
+      + '• หากคุณใช้งานผ่าน Netlify: กรุณาสลับเป็นโหมด Chat (ปุ่ม 💬 Chat มุมซ้ายบน) เพื่อคุยผ่าน Cloud AI (Gemini / Groq / HuggingFace)\\n'
+      + '• หากต้องการใช้ Agent ช่วยเขียนไฟล์/รันคำสั่งในเครื่อง: เปิด Terminal บนคอมพิวเตอร์ของคุณแล้วรันคำสั่ง: "rnai ui --remote"');
+    b.classList.add('err');
+    $('send').disabled = false;
+  }
 }
 /* ── Projects ── */
 async function loadProjects(){
