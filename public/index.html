@@ -5,6 +5,7 @@
 <title>Rnai</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#0B3945">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Rnai">
@@ -512,15 +513,17 @@ nav .grow { flex:1; }
 </div>
 <div id="accountdlg">
   <div class="fdcard" id="acLoginCard">
-    <h3>🔌 เชื่อมต่อบัญชี Rnai.io</h3>
-    <p>เข้าสู่ระบบเพื่อดูเครดิตคงเหลือ และให้ agent เรียก skills ผ่านเครดิตของคุณ — ระบบจะสร้าง API key ให้อัตโนมัติ ไม่ต้องเข้าเว็บไปสร้างเอง</p>
-    <input id="acEmail" type="email" placeholder="อีเมล Rnai.io" autocomplete="email">
-    <input id="acPassword" type="password" placeholder="รหัสผ่าน" autocomplete="current-password">
-    <div id="acmsg"></div>
-    <div class="actions">
-      <button class="fd-cancel" onclick="$('accountdlg').classList.remove('show')">ยกเลิก</button>
-      <button class="fd-save" id="acLoginBtn" onclick="doLogin()">เข้าสู่ระบบ</button>
-    </div>
+    <form onsubmit="doLogin(); return false;">
+      <h3>🔌 เชื่อมต่อบัญชี Rnai.io</h3>
+      <p>เข้าสู่ระบบเพื่อดูเครดิตคงเหลือ และให้ agent เรียก skills ผ่านเครดิตของคุณ — ระบบจะสร้าง API key ให้อัตโนมัติ ไม่ต้องเข้าเว็บไปสร้างเอง</p>
+      <input id="acEmail" type="email" placeholder="อีเมล Rnai.io" autocomplete="email">
+      <input id="acPassword" type="password" placeholder="รหัสผ่าน" autocomplete="current-password">
+      <div id="acmsg"></div>
+      <div class="actions">
+        <button type="button" class="fd-cancel" onclick="$('accountdlg').classList.remove('show')">ยกเลิก</button>
+        <button type="submit" class="fd-save" id="acLoginBtn">เข้าสู่ระบบ</button>
+      </div>
+    </form>
   </div>
   <div class="fdcard" id="acAccountCard" style="display:none">
     <h3>🔌 บัญชี Rnai.io</h3>
@@ -911,10 +914,7 @@ async function delTask(id){ await fetch('/api/tasks/'+id, { method:'DELETE' }); 
 async function chatDirectCloud(model, text) {
   const t0 = performance.now();
   if (model.startsWith('ollama')) {
-    throw new Error('โมเดล Ollama เป็นโมเดลสำหรับรันบนคอมพิวเตอร์ของคุณ
-
-• หากเปิดผ่าน Netlify: กรุณาสลับโมเดลเป็น Hugging Face / Gemini / Groq ในมุมขวาบน
-• หากต้องการใช้ Ollama: เปิด Terminal ในเครื่องคอมพิวเตอร์แล้วรันคำสั่ง "rnai ui --remote"');
+    throw new Error('โมเดล Ollama เป็นโมเดลสำหรับรันบนคอมพิวเตอร์ของคุณ\n\n• หากเปิดผ่าน Netlify: กรุณาสลับโมเดลเป็น Hugging Face / Gemini / Groq ในมุมขวาบน\n• หากต้องการใช้ Ollama: เปิด Terminal ในเครื่องคอมพิวเตอร์แล้วรันคำสั่ง "rnai ui --remote"');
   }
   if (model === 'gemini') {
     const key = localStorage.getItem('GEMINI_API_KEY');
@@ -1002,11 +1002,8 @@ async function send() {
     wait.parentElement.remove();
     let msg = String(e.message || e);
     if (msg.includes('Failed to fetch') || msg.includes('TypeError')) {
-      msg = '⚠️ ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้ในขณะนี้
-
-'
-          + '• หากใช้งานผ่าน Netlify (เว็บเบราว์เซอร์): กรุณาเลือกโมเดล Gemini / Groq / HuggingFace ในช่องมุมขวาบน และใส่ API Key ในหน้า Settings
-'
+      msg = '⚠️ ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้ในขณะนี้\n\n'
+          + '• หากใช้งานผ่าน Netlify (เว็บเบราว์เซอร์): กรุณาเลือกโมเดล Gemini / Groq / HuggingFace ในช่องมุมขวาบน และใส่ API Key ในหน้า Settings\n'
           + '• หากต้องการใช้ Ollama / Local Agent: เปิด Terminal ในคอมพิวเตอร์ แล้วรันคำสั่ง "rnai ui --remote"';
     }
     const b = addMsg('bot', msg); b.classList.add('err');
