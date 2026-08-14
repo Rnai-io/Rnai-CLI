@@ -1140,13 +1140,29 @@ async function chatDirectCloud(model, text) {
     return { reply, model: 'OpenRouter Free', elapsed: (performance.now() - t0)/1000 };
   }
 
-  // 5. RNAI (Default Auto Fallback)
+  // 5. RNAI.IO CLOUD API
+  const rnaiKey = localStorage.getItem('RNAI_IO_API_KEY');
+  if (rnaiKey) {
+    try {
+      const res = await fetch('https://rnai-io.vercel.app/api/rnai/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${rnaiKey}` },
+        body: JSON.stringify({ message: text })
+      });
+      const data = await res.json();
+      if (data && data.text) {
+        return { reply: data.text, model: 'rnai-llm v4.1 (Rnai.io Cloud)', elapsed: (performance.now() - t0)/1000 };
+      }
+    } catch(e) {}
+  }
+
+  // 6. DEFAULT AUTO FALLBACK TO WORKING CLOUD ENGINE
   if (groqKey) return chatDirectCloud('groq', text);
   if (openrouterKey) return chatDirectCloud('openrouter', text);
   if (geminiKey) return chatDirectCloud('gemini', text);
   if (hfKey) return chatDirectCloud('hf', text);
 
-  throw new Error('ไม่พบ API Key ในหน้า Settings\n\n• กรุณากดปุ่ม 🔑 Login หรือ Settings ด้านบน เพื่อรับ API Key ฟรีของ Gemini / Groq / OpenRouter แล้วนำมาใส่ในช่อง');
+  throw new Error('ไม่พบ API Key ในหน้า Settings\n\n• กรุณากดปุ่ม 🔑 Login หรือ Settings ด้านบน เพื่อวาง API Key ของ Gemini / Groq / OpenRouter');
 }
 
 async function send() {
