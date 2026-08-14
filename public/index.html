@@ -37,9 +37,9 @@ html,body { height:100%; }
 body { font:15px/1.7 -apple-system,BlinkMacSystemFont,'Inter','Noto Sans Thai',sans-serif;
        color:var(--ink); background:var(--page); display:flex; flex-direction:column; }
 button { font:inherit; cursor:pointer; color:inherit; }
-input, textarea, select { color:var(--ink); }
+input, textarea, select { color:var(--ink); font-weight:600; }
 option { color:#171717; }   /* dropdown ที่กางออกใช้พื้นระบบ ต้องมีสีเข้มเสมอ */
-::placeholder { color:var(--faint); }
+::placeholder { color:var(--sub); opacity:0.85; font-weight:400; }
 #model .arrow { }
 /* ลูกศร select ให้ตามธีม */
 html[data-theme="dark"] #model { background-image:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="10" height="6" viewBox="0 0 10 6"><path d="M1 1l4 4 4-4" stroke="%239aa0a6" fill="none" stroke-width="1.5" stroke-linecap="round"/></svg>'); }
@@ -124,8 +124,11 @@ nav .grow { flex:1; }
           box-shadow:0 20px 60px rgba(0,0,0,.25); }
 .fdcard h3 { font-size:17px; font-weight:700; margin-bottom:6px; }
 .fdcard p { font-size:13px; color:var(--sub); margin-bottom:16px; }
-.fdcard input { width:100%; border:1px solid var(--line); border-radius:9px; padding:10px 12px;
-                font:13px ui-monospace,monospace; }
+.fdcard input { width:100%; border:1.5px solid var(--sub); border-radius:9px; padding:10px 14px;
+                font:14px -apple-system,BlinkMacSystemFont,'Inter',sans-serif; color:var(--ink);
+                background:var(--page); font-weight:600; transition:.15s; }
+.fdcard input:focus { outline:0; border-color:var(--brand-ink); box-shadow:0 0 0 3px rgba(11,57,69,0.15); }
+.fdcard input#acEmail, .fdcard input#acPassword { margin-top:8px; font-size:14px; font-weight:600; color:var(--ink); }
 .fdcard .row { display:flex; align-items:center; gap:8px; margin-top:12px; font-size:13px; color:var(--ink2); }
 .fdcard .files { margin-top:14px; max-height:180px; overflow-y:auto; border:1px solid var(--line);
                  border-radius:9px; padding:8px; font-size:12.5px; color:var(--ink2); }
@@ -139,7 +142,6 @@ nav .grow { flex:1; }
 #accountdlg { position:fixed; inset:0; background:rgba(0,0,0,.28); display:none; align-items:center;
               justify-content:center; z-index:50; }
 #accountdlg.show { display:flex; }
-.fdcard input#acEmail, .fdcard input#acPassword { margin-top:8px; }
 #acctBtn { border:1px solid var(--line); background:var(--card); border-radius:99px; padding:6px 14px;
            font-size:12.5px; font-weight:600; color:var(--ink2); cursor:pointer; white-space:nowrap; }
 #acctBtn:hover { border-color:var(--faint); background:var(--hover); }
@@ -225,9 +227,10 @@ nav .grow { flex:1; }
 .setrow .name { font-size:14px; font-weight:600; display:flex; align-items:center; gap:8px; }
 .setrow .desc { font-size:12.5px; color:var(--sub); }
 .setrow .desc a { color:var(--accent); text-decoration:none; }
-.setrow input, .setrow select.val { border:1px solid var(--line); border-radius:8px; padding:8px 12px;
-             font-size:13px; width:230px; font-family:ui-monospace,monospace; }
-.setrow input:focus { outline:0; border-color:var(--faint); }
+.setrow input, .setrow select.val { border:1.5px solid var(--sub); border-radius:9px; padding:9px 13px;
+             font-size:13.5px; width:260px; font-family:ui-monospace,monospace; color:var(--ink);
+             background:var(--page); font-weight:600; letter-spacing:.02em; transition:.15s; }
+.setrow input:focus { outline:0; border-color:var(--brand-ink); box-shadow:0 0 0 3px rgba(11,57,69,0.15); }
 .setrow .save { border:0; background:var(--btn-bg); color:var(--btn-fg); border-radius:8px;
                 padding:8px 16px; font-size:13px; font-weight:500; }
 .setrow .save:hover { background:#000; }
