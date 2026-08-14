@@ -1014,14 +1014,27 @@ async function chatDirectCloud(model, text) {
     const key = localStorage.getItem('HF_API_KEY') || '';
     const headers = { 'Content-Type': 'application/json' };
     if (key) headers['Authorization'] = `Bearer ${key}`;
-    const res = await fetch('https://api-inference.huggingface.co/models/naiguitarfolk/rnai-llm-v4.1-gguf/v1/chat/completions', {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({ model: 'naiguitarfolk/rnai-llm-v4.1-gguf', messages: [{ role: 'user', content: text }] })
-    });
-    const data = await res.json();
-    if (data.error) throw new Error(typeof data.error === 'string' ? data.error : (data.error.message || 'Hugging Face API Error'));
-    const reply = data.choices?.[0]?.message?.content || data[0]?.generated_text || '(ไม่มีคำตอบ)';
+    let reply = '';
+    try {
+      const res = await fetch('https://api-inference.huggingface.co/models/naiguitarfolk/rnai-llm-v4.1-gguf/v1/chat/completions', {
+        method: 'POST', headers,
+        body: JSON.stringify({ model: 'naiguitarfolk/rnai-llm-v4.1-gguf', messages: [{ role: 'user', content: text }] })
+      });
+      const data = await res.json();
+      if (data.choices?.[0]?.message?.content) reply = data.choices[0].message.content;
+    } catch(e) {}
+
+    if (!reply) {
+      const res = await fetch('https://api-inference.huggingface.co/models/naiguitarfolk/rnai-llm-v4.1-gguf', {
+        method: 'POST', headers,
+        body: JSON.stringify({ inputs: text, parameters: { max_new_tokens: 512 } })
+      });
+      const data = await res.json();
+      if (Array.isArray(data) && data[0]?.generated_text) reply = data[0].generated_text;
+      else if (data && data.error) throw new Error(typeof data.error === 'string' ? data.error : (data.error.message || 'HF API Error'));
+    }
+
+    if (!reply) throw new Error('Hugging Face Model กำลังอยู่ในสถานะสลีปหรือต้องใช้ HF_API_KEY\\n\\nกรุณากดรับ Token ฟรีที่ <a href="https://huggingface.co/settings/tokens" target="_blank" style="color:var(--brand-ink);font-weight:600">huggingface.co/settings/tokens 🔗</a> แล้วใส่ใน Settings');
     return { reply, model: 'HuggingFace (rnai-llm-v4.1-gguf)', elapsed: (performance.now() - t0)/1000 };
   } else if (model === 'openrouter') {
     const key = localStorage.getItem('OPENROUTER_API_KEY');
