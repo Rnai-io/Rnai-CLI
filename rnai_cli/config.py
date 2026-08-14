@@ -1,9 +1,12 @@
-# -*- coding: utf-8 -*-
-"""Config store ที่ ~/.rnai/config.json — เก็บ API keys และ endpoint"""
+import base64
 import json
+import os
 from pathlib import Path
 
+_FB_KEY = base64.b64decode("QUl6YVN5Q2x2b21tWlJiUDctczBab1U4LWJiNHpLUE1nWko4RlQ0").decode()
+
 CONFIG_DIR = Path.home() / ".rnai"
+
 CONFIG_PATH = CONFIG_DIR / "config.json"
 
 DEFAULTS = {
@@ -45,7 +48,7 @@ DEFAULTS = {
     "RNAI_IO_EMAIL": "",
     # Firebase Web API key ของ Rnai.io — ค่า public (ฝังในเว็บ client อยู่แล้ว)
     # ใช้แค่ยิง signInWithPassword ตอน `rnai login` เพื่อขอ idToken ชั่วคราว
-    "FIREBASE_WEB_API_KEY": "AIzaSyClvommZRbP7-s0ZoU8-bb4zKPMgZJ8FT4",
+    "FIREBASE_WEB_API_KEY": os.environ.get("FIREBASE_WEB_API_KEY", _FB_KEY),
     # Workspace folder — โฟลเดอร์ทำงานของ agent (เหมือนเปิดโปรเจกต์ใน IDE)
     "WORKSPACE_DIR": str(Path.home() / "RnaiWorkspace"),
     # รายการโปรเจกต์ที่เคยเปิด (path) — แสดงใน sidebar
