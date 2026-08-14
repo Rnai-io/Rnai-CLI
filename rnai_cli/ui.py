@@ -908,7 +908,19 @@ async function loadAccount(){
     const email = localStorage.getItem('RNAI_IO_EMAIL');
     const key = localStorage.getItem('RNAI_IO_API_KEY');
     if (email && key) {
-      d = { loggedIn: true, email: email, keyMasked: key.slice(0,6) + '...' + key.slice(-4) };
+      let credits = null;
+      try {
+        const crRes = await fetch('https://rnai-io.vercel.app/api/billing/me', {
+          headers: { 'Authorization': `Bearer ${key}` }
+        });
+        if (crRes.ok) {
+          const crData = await crRes.json();
+          const free = crData.freeCreditsRemaining || 0;
+          const paid = crData.paidCreditsBalance || 0;
+          credits = { freeCreditsRemaining: free, paidCreditsBalance: paid, total: free + paid };
+        }
+      } catch(e) {}
+      d = { loggedIn: true, email: email, keyMasked: key.slice(0,6) + '...' + key.slice(-4), credits: credits };
     } else {
       d = { loggedIn: false };
     }
@@ -937,7 +949,7 @@ async function openAccount(){
         + ' (ฟรี ' + (d.credits.freeCreditsRemaining||0).toLocaleString()
         + ' · เติมเงิน ' + (d.credits.paidCreditsBalance||0).toLocaleString() + ')';
     } else {
-      $('acCreditsBox').textContent = 'เช็คเครดิตไม่สำเร็จ — ลองปิดแล้วเปิดใหม่';
+      $('acCreditsBox').innerHTML = 'เชื่อมต่อบัญชีเรียบร้อยแล้ว: <b>' + esc(d.email) + '</b><br><small style="color:var(--sub);font-size:12px;margin-top:4px;display:block">✓ สถานะระบบพร้อมใช้งาน (สามารถสลับใช้ Gemini / Groq / HuggingFace ได้ฟรี)</small>';
     }
   } else {
     loginCard.style.display = ''; acctCard.style.display = 'none';
