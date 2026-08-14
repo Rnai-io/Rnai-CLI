@@ -457,13 +457,13 @@ nav .grow { flex:1; }
   <button id="acctBtn" onclick="openAccount()" title="บัญชี Rnai.io — เข้าสู่ระบบเพื่อดูเครดิต">🔌 เข้าสู่ระบบ Rnai.io</button>
   <button id="themebtn" onclick="toggleTheme()" title="สลับโหมดสว่าง/มืด">🌙</button>
   <select id="model">
-    <option value="ollama/hf.co/naiguitarfolk/rnai-llm-v4.1-gguf">Ollama: rnai-llm v4.1 GGUF (HuggingFace Direct)</option>
-    <option value="hf/naiguitarfolk/rnai-llm-v4.1-gguf">Hugging Face: rnai-llm v4.1 GGUF (Free Cloud)</option>
-    <option value="ollama">Ollama: rnai-llm v4.1 (Local GGUF)</option>
     <option value="rnai">rnai-llm (Rnai.io Cloud)</option>
-    <option value="gemini">Gemini</option>
-    <option value="groq">Groq</option>
-    <option value="openrouter">OpenRouter</option>
+    <option value="hf/naiguitarfolk/rnai-llm-v4.1-gguf">Hugging Face: rnai-llm v4.1 GGUF (Free Cloud)</option>
+    <option value="gemini">Gemini (Google AI Studio)</option>
+    <option value="groq">Groq (Llama-3.3)</option>
+    <option value="openrouter">OpenRouter (Free Models)</option>
+    <option value="ollama/hf.co/naiguitarfolk/rnai-llm-v4.1-gguf">Ollama: rnai-llm v4.1 GGUF (Local Machine)</option>
+    <option value="ollama">Ollama: rnai-llm v4.1 (Local GGUF)</option>
   </select>
 </nav>
 <div id="wrap">
@@ -980,9 +980,12 @@ async function delTask(id){ await fetch('/api/tasks/'+id, { method:'DELETE' }); 
 
 async function chatDirectCloud(model, text) {
   const t0 = performance.now();
+  if (model.startsWith('ollama')) {
+    throw new Error('โมเดล Ollama เป็นโมเดลสำหรับรันบนคอมพิวเตอร์ของคุณ\n\n• หากเปิดผ่าน Netlify: กรุณาสลับโมเดลเป็น Hugging Face / Gemini / Groq ในมุมขวาบน\n• หากต้องการใช้ Ollama: เปิด Terminal ในเครื่องคอมพิวเตอร์แล้วรันคำสั่ง "rnai ui --remote"');
+  }
   if (model === 'gemini') {
     const key = localStorage.getItem('GEMINI_API_KEY');
-    if (!key) throw new Error('กรุณาตั้งค่า GEMINI_API_KEY ในหน้า Settings ก่อนใช้งาน');
+    if (!key) throw new Error('กรุณากรอก GEMINI_API_KEY ในหน้า Settings (คลิกที่ปุ่ม 🔑 Login หรือ Settings ด้านบน)');
     const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -994,7 +997,7 @@ async function chatDirectCloud(model, text) {
     return { reply, model: 'Gemini 1.5 Flash', elapsed: (performance.now() - t0)/1000 };
   } else if (model === 'groq') {
     const key = localStorage.getItem('GROQ_API_KEY');
-    if (!key) throw new Error('กรุณาตั้งค่า GROQ_API_KEY ในหน้า Settings ก่อนใช้งาน');
+    if (!key) throw new Error('กรุณากรอก GROQ_API_KEY ในหน้า Settings ก่อนใช้งาน');
     const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
@@ -1019,7 +1022,7 @@ async function chatDirectCloud(model, text) {
     return { reply, model: 'HuggingFace (rnai-llm-v4.1-gguf)', elapsed: (performance.now() - t0)/1000 };
   } else if (model === 'openrouter') {
     const key = localStorage.getItem('OPENROUTER_API_KEY');
-    if (!key) throw new Error('กรุณาตั้งค่า OPENROUTER_API_KEY ในหน้า Settings ก่อนใช้งาน');
+    if (!key) throw new Error('กรุณากรอก OPENROUTER_API_KEY ในหน้า Settings ก่อนใช้งาน');
     const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
@@ -1062,7 +1065,16 @@ async function send() {
     wait.parentElement.remove();
     if (d.error) { const b = addMsg('bot', d.error); b.classList.add('err'); }
     else { sid = d.session_id || sid; addMsg('bot', d.reply, d.model + ' · ' + (d.elapsed ? d.elapsed.toFixed(1) + 's' : 'cloud')); }
-  } catch (e) { wait.parentElement.remove(); const b = addMsg('bot', String(e)); b.classList.add('err'); }
+  } catch (e) {
+    wait.parentElement.remove();
+    let msg = String(e.message || e);
+    if (msg.includes('Failed to fetch') || msg.includes('TypeError')) {
+      msg = '⚠️ ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้ในขณะนี้\n\n'
+          + '• หากใช้งานผ่าน Netlify (เว็บเบราว์เซอร์): กรุณาเลือกโมเดล Gemini / Groq / HuggingFace ในช่องมุมขวาบน และใส่ API Key ในหน้า Settings\n'
+          + '• หากต้องการใช้ Ollama / Local Agent: เปิด Terminal ในคอมพิวเตอร์ แล้วรันคำสั่ง "rnai ui --remote"';
+    }
+    const b = addMsg('bot', msg); b.classList.add('err');
+  }
   $('send').disabled = false; loadRecents(); scrollBottom();
 }
 function scrollBottom(){ const c = $('chat'); c.scrollTop = c.scrollHeight; }
