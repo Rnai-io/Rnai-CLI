@@ -450,10 +450,11 @@ nav .grow { flex:1; }
   <a href="#" onclick="showChat();return false">Chat</a>
   <a href="#" onclick="showWorkspace();return false">Workspace</a>
   <a href="#" onclick="showSettings();return false">Settings</a>
+  <a href="#" onclick="openAccount();return false" style="color:var(--brand-ink);font-weight:600">🔑 Login</a>
   <a href="#" onclick="showDownload();return false">Download</a>
   <a href="https://rnai-io.vercel.app" target="_blank">Rnai.io</a>
   <div class="grow"></div>
-  <button id="acctBtn" onclick="openAccount()" title="บัญชี Rnai.io — เข้าสู่ระบบเพื่อดูเครดิต">🔌 Rnai.io</button>
+  <button id="acctBtn" onclick="openAccount()" title="บัญชี Rnai.io — เข้าสู่ระบบเพื่อดูเครดิต">🔌 เข้าสู่ระบบ Rnai.io</button>
   <button id="themebtn" onclick="toggleTheme()" title="สลับโหมดสว่าง/มืด">🌙</button>
   <select id="model">
     <option value="ollama">Ollama: rnai-llm v4.1 (Local GGUF)</option>
@@ -467,6 +468,7 @@ nav .grow { flex:1; }
   <div id="sideBackdrop" onclick="closeMobileSidebar()"></div>
   <div id="side">
     <button id="newBtn" onclick="newChat()"><span style="font-size:16px">＋</span> สนทนาใหม่</button>
+    <button id="sideAcctBtn" onclick="openAccount()" style="margin:0 16px 12px;padding:8px 12px;border:1px solid var(--line);background:var(--soft);border-radius:var(--r);font-size:13px;color:var(--ink);cursor:pointer;display:flex;align-items:center;gap:6px">🔌 เข้าสู่ระบบ Rnai.io</button>
     <div class="label projlabel">โปรเจกต์
       <button id="newProj" onclick="openNewProject()" title="เพิ่มโปรเจกต์ใหม่">＋</button>
     </div>
@@ -889,16 +891,15 @@ async function saveFolder(){
 /* ── Rnai.io account (login / เครดิต) ── */
 async function loadAccount(){
   const d = await (await fetch('/api/rnai/account')).json();
-  const btn = $('acctBtn');
+  const btn = $('acctBtn'); const sideBtn = $('sideAcctBtn');
   if (d.loggedIn) {
     const total = d.credits ? d.credits.total : null;
-    btn.textContent = total === null ? '🔌 ' + d.email : '💳 ' + total.toLocaleString();
-    btn.classList.add('linked');
-    btn.title = 'เข้าสู่ระบบแล้ว: ' + d.email;
+    const txt = total === null ? '🔌 ' + d.email : '💳 เครดิต: ' + total.toLocaleString();
+    if (btn) { btn.textContent = txt; btn.classList.add('linked'); btn.title = 'เข้าสู่ระบบแล้ว: ' + d.email; }
+    if (sideBtn) sideBtn.textContent = '👤 ' + d.email;
   } else {
-    btn.textContent = '🔌 Rnai.io';
-    btn.classList.remove('linked');
-    btn.title = 'บัญชี Rnai.io — เข้าสู่ระบบเพื่อดูเครดิต';
+    if (btn) { btn.textContent = '🔌 เข้าสู่ระบบ Rnai.io'; btn.classList.remove('linked'); }
+    if (sideBtn) sideBtn.textContent = '🔌 เข้าสู่ระบบ Rnai.io';
   }
   return d;
 }
@@ -1184,7 +1185,14 @@ async function loadConfig(){
       ]}
     ]};
   }
-  let html = '';
+  let html = `<div class="sethead">🔑 บัญชี Rnai.io (Account & Login)</div>
+    <div class="setrow">
+      <div class="info">
+        <div class="name">เข้าสู่ระบบเพื่อใช้งาน Rnai.io Cloud Models & Skills</div>
+        <div class="desc">เข้าใช้งานด้วยอีเมลและรหัสผ่านของคุณจาก Rnai.io เพื่อดูเครดิตและสร้าง API key ให้อัตโนมัติ</div>
+      </div>
+      <button class="save" onclick="openAccount()">🔑 เข้าสู่ระบบ Rnai.io</button>
+    </div>`;
   for (const sec of d.sections) {
     html += `<div class="sethead">${sec.title}</div>`;
     for (const it of sec.items) {
@@ -1220,6 +1228,7 @@ async function saveKey(key){
   setTimeout(loadConfig, 900);
 }
 loadRecents();
+if (location.hash === '#login') { openAccount(); }
 </script>
 </body>
 </html>"""
